@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "libcsp-cargo-build", "libcsp-rust",
+]
+
