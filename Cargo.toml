@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "libcsp-cargo-build", "libcsp", "libcsp-sys", "examples"
+]
+resolver = "2"

@@ -1,0 +1,10 @@
+[package]
+name = "libcsp-rust-examples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libcsp =  { path = "../libcsp" }
+
+[build-dependencies]
+libcsp-cargo-build = { path = "../libcsp-cargo-build" }
