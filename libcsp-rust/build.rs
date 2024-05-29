@@ -32,8 +32,6 @@ fn main() {
     let mut csp_builder = Builder::new();
     csp_builder.compile();
 
-    // println!("cargo:rustc-link-search=NATIVE=./");
-
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
