@@ -4,3 +4,5 @@ members = [
     "libcsp-cargo-build", "libcsp-rust",
 ]
 
+
+resolver = "2"

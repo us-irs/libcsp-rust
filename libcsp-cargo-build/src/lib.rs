@@ -23,12 +23,18 @@ pub struct Builder {
     build: cc::Build,
 }
 
-impl Builder {
-    pub fn new() -> Self {
+impl Default for Builder {
+    fn default() -> Self {
         Self {
             opts: CspBuildOpts::default(),
             build: cc::Build::new(),
         }
+    }
+}
+
+impl Builder {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn cc(&mut self) -> &mut cc::Build {
@@ -77,6 +83,7 @@ impl Builder {
 
         self.build.compile("csp");
     }
+
     #[cfg(unix)]
     fn posix_arch_files(&mut self) {
         self.build
