@@ -142,7 +142,16 @@ name = "libcsp-rust"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "bitflags",
  "libcsp-cargo-build",
+]
+
+[[package]]
+name = "libcsp-rust-examples"
+version = "0.1.0"
+dependencies = [
+ "libcsp-cargo-build",
+ "libcsp-rust",
 ]
 
 [[package]]

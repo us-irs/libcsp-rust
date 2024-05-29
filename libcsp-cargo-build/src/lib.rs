@@ -56,7 +56,11 @@ impl Builder {
             .file("libcsp/src/csp_promisc.c")
             .file("libcsp/src/csp_qfifo.c")
             .file("libcsp/src/csp_port.c")
-            .file("libcsp/src/csp_route.c");
+            .file("libcsp/src/csp_route.c")
+            .file("libcsp/src/interfaces/csp_if_lo.c")
+            .file("libcsp/src/interfaces/csp_if_kiss.c")
+            .file("libcsp/src/interfaces/csp_if_tun.c")
+            .file("libcsp/src/interfaces/csp_if_udp.c");
         if self.opts.rdp {
             self.build.file("libcsp/src/csp_rdp.c");
             self.build.file("libcsp/src/csp_rdp_queue.c");

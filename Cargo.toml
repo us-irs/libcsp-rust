@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "libcsp-cargo-build", "libcsp-rust",
+    "libcsp-cargo-build", "libcsp-rust", "examples"
 ]
 
 
