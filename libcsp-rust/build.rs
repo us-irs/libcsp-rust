@@ -27,7 +27,8 @@ fn main() {
     // Tell cargo to tell rustc to link our `csp` library. Cargo will
     // automatically know it must look for a `libcsp.a` file.
     println!("cargo:rustc-link-lib=csp");
-    println!("cargo:rustc-link-search={}/csp", project_dir);
+    println!("cargo:rustc-link-lib=csp");
+    // println!("cargo:rustc-link-search={}/csp", project_dir);
 
     let mut csp_builder = Builder::new();
     csp_builder.compile();

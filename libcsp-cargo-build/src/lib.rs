@@ -49,6 +49,7 @@ impl Builder {
             .file("libcsp/src/csp_debug.c")
             .file("libcsp/src/csp_id.c")
             .file("libcsp/src/csp_iflist.c")
+            .file("libcsp/src/csp_conn.c")
             .file("libcsp/src/csp_init.c")
             .file("libcsp/src/csp_io.c")
             .file("libcsp/src/csp_port.c")
