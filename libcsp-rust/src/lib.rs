@@ -123,13 +123,13 @@ pub struct csp_conn_s {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct csp_packet_s {
-    pub __bindgen_anon_1: csp_packet_s_anon_union,
+    pub packet_info: csp_packet_s_anon_union,
     pub length: u16,
     pub id: csp_id_t,
     pub next: *mut csp_packet_s,
     #[doc = " Additional header bytes, to prepend packed data before transmission\n This must be minimum 6 bytes to accomodate CSP 2.0. But some implementations\n require much more scratch working area for encryption for example.\n\n Ultimately after csp_id_pack() this area will be filled with the CSP header"]
     pub header: [u8; 8usize],
-    pub __bindgen_anon_2: csp_packet_s_data_union,
+    pub packet_data_union: csp_packet_s_data_union,
 }
 
 #[repr(C)]
@@ -222,12 +222,12 @@ impl CspPacket {
 impl Default for CspPacket {
     fn default() -> Self {
         Self(csp_packet_s {
-            __bindgen_anon_1: Default::default(),
+            packet_info: Default::default(),
             length: Default::default(),
             id: Default::default(),
             next: core::ptr::null_mut(),
             header: Default::default(),
-            __bindgen_anon_2: Default::default(),
+            packet_data_union: Default::default(),
         })
     }
 }
@@ -319,8 +319,7 @@ extern "C" {
     #[doc = " Initialize CSP.\n This will configure basic structures."]
     pub fn csp_init();
 
-    #[cfg(feature = "std")]
-    pub fn csp_print_func(fmt: *const ::std::os::raw::c_char, ...);
+    pub fn csp_print_func(fmt: *const core::ffi::c_char, ...);
 
     #[doc = " Bind port to socket.\n\n @param[in] socket socket to bind port to\n @param[in] port port number to bind, use #CSP_ANY for all ports. Bindnig to a specific will take precedence over #CSP_ANY.\n @return #CSP_ERR_NONE on success, otherwise an error code."]
     pub fn csp_bind(socket: *mut csp_socket_t, port: u8) -> core::ffi::c_int;
