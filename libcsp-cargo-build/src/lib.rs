@@ -99,7 +99,7 @@ impl Default for Config {
             csp_print: true,
             promisc: true,
             rdp: true,
-            yaml: true,
+            yaml: false,
         }
     }
 }
