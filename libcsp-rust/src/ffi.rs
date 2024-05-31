@@ -2,10 +2,10 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-// These constants come from the autoconfig file, which is supposed to be configurable..
-// How do we deal with this? Rust libraries are not supposed to be configured like this.
-pub const CSP_BUFFER_SIZE: usize = 256;
-pub const CSP_CONN_RXQUEUE_LEN: usize = 16;
+// This file will be created by the build script by copying a user-provided file to the output
+// directory. It contains important compile time constants. Compilation of the library is not
+// possible without these constants.
+include!(concat!(env!("OUT_DIR"), "/autoconfig.rs"));
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

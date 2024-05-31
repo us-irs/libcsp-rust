@@ -199,12 +199,15 @@ impl Builder {
         self.build.include(&autoconf_dir);
         autoconf_dir.push("csp");
         std::fs::create_dir_all(&autoconf_dir)?;
-        generate_autoconf_file(autoconf_dir, &self.cfg)
+        generate_autoconf_header_file(autoconf_dir, &self.cfg)
+    }
+
+    pub fn generate_autoconf_rust_file(&self, out_dir: PathBuf) -> io::Result<()> {
+        generate_autoconf_rust_file(out_dir, &self.cfg)
     }
 }
 
-pub fn generate_autoconf_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> {
-    // panic!("cargo:warning=outdir for autoconf file: {:?}", out_dir);
+pub fn generate_autoconf_header_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> {
     let mut autoconf_file_string = String::new();
     #[cfg(unix)]
     autoconf_file_string.push_str("#define CSP_POSIX 1\n");
@@ -302,6 +305,49 @@ pub fn generate_autoconf_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> 
     ));
     autoconf_file_string.push_str(&format!("#define {} {}\n", autoconf::CFG_HAVE_LIBZMQ, 0));
     let out_file = out_dir.join("autoconfig.h");
+    let mut file = std::fs::File::create(out_file)?;
+    file.write_all(autoconf_file_string.as_bytes())?;
+    Ok(())
+}
+
+pub fn generate_autoconf_rust_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> {
+    let mut autoconf_file_string = String::new();
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_CONN_RXQUEUE_LEN,
+        cfg.conn_rx_queue_len
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_QFIFO_LEN,
+        cfg.qfifo_len
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_PORT_MAX_BIND,
+        cfg.port_max_bind
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_CONN_MAX,
+        cfg.conn_max
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_BUFFER_SIZE,
+        cfg.buffer_size
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_RDP_MAX_WINDOW,
+        cfg.rdp_max_window
+    ));
+    autoconf_file_string.push_str(&format!(
+        "const {}: usize = {}\n",
+        autoconf::CFG_RTABLE_SIZE,
+        cfg.rtable_size
+    ));
+    let out_file = out_dir.join("autoconfig.rs");
     let mut file = std::fs::File::create(out_file)?;
     file.write_all(autoconf_file_string.as_bytes())?;
     Ok(())

@@ -6,6 +6,8 @@ extern crate alloc;
 extern crate std;
 
 pub mod ffi;
+pub mod config;
+
 use core::time::Duration;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
