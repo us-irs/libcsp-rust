@@ -1,11 +1,25 @@
-use std::{thread, time::Duration};
-
-use libcsp_rust::{
-    csp_accept, csp_bind, csp_init, csp_listen, csp_read, csp_route_work, CspSocket, CSP_ANY,
+use std::{
+    sync::{
+        atomic::{AtomicBool, AtomicU32},
+        Arc,
+    },
+    thread,
+    time::Duration,
 };
 
-/*
+use libcsp_rust::{
+    csp_accept_guarded, csp_bind, csp_buffer_get, csp_conn_dport, csp_conn_print_table,
+    csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping, csp_read, csp_reboot,
+    csp_route_work, csp_send, csp_service_handler, ConnectOpts, CspSocket, MsgPriority,
+    SocketFlags, CSP_ANY, CSP_LOOPBACK,
+};
 
+const MY_SERVER_PORT: i32 = 10;
+const RUN_DURATION_IN_SECS: u32 = 3;
+
+const TEST_MODE: bool = false;
+
+/*
 #include <csp/csp_debug.h>
 #include <string.h>
 #include <unistd.h>
@@ -228,10 +242,16 @@ int main(int argc, char * argv[]) {
 }
 */
 
-fn main() {
+fn main() -> Result<(), u32> {
     println!("CSP server example");
     // SAFETY: We only call this once.
     unsafe { csp_init() };
+
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let stop_signal_server = stop_signal.clone();
+    let stop_signal_client = stop_signal.clone();
+    let server_received = Arc::new(AtomicU32::new(0));
+    let server_recv_copy = server_received.clone();
 
     let csp_router_jh = thread::spawn(|| loop {
         if let Err(e) = csp_route_work() {
@@ -245,12 +265,47 @@ fn main() {
         }
     });
 
-    server();
+    let csp_server_jh = thread::spawn(|| {
+        server(server_received, stop_signal_server);
+    });
+
+    let csp_client_jh = thread::spawn(|| {
+        client(stop_signal_client);
+    });
+
+    println!("CSP connection table");
+    csp_conn_print_table();
+
+    println!("CSP interfaces");
+    csp_iflist_print();
+    let mut app_result = Ok(());
+    // Wait for execution to end (ctrl+c)
+    loop {
+        std::thread::sleep(Duration::from_secs(RUN_DURATION_IN_SECS as u64));
+
+        if TEST_MODE {
+            // Test mode is intended for checking that host & client can exchange packets over loopback
+            let received_count = server_recv_copy.load(std::sync::atomic::Ordering::Relaxed);
+            println!("CSP: Server received {} packets", received_count);
+            if received_count < 5 {
+                stop_signal.store(true, std::sync::atomic::Ordering::Relaxed);
+                app_result = Err(1);
+                break;
+            }
+            stop_signal.store(true, std::sync::atomic::Ordering::Relaxed);
+            break;
+        }
+    }
 
     csp_router_jh.join().unwrap();
+    csp_server_jh.join().unwrap();
+    csp_client_jh.join().unwrap();
+    app_result
 }
 
-fn server() {
+fn server(server_received: Arc<AtomicU32>, stop_signal: Arc<AtomicBool>) {
+    println!("server task started");
+
     // Create socket with no specific socket options, e.g. accepts CRC32, HMAC, etc. if enabled
     // during compilation
     let mut csp_socket = CspSocket::default();
@@ -263,41 +318,108 @@ fn server() {
 
     // Wait for connections and then process packets on the connection
     loop {
-        // Wait for a new connection, 10000 mS timeout
+        if stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
 
-        let conn = csp_accept(&mut csp_socket, Duration::from_millis(10000));
+        // Wait for a new connection, 10000 mS timeout
+        let conn = csp_accept_guarded(&mut csp_socket, Duration::from_millis(10000));
         if conn.is_none() {
             continue;
         }
-        let mut conn = conn.unwrap();
+        let conn = conn.unwrap();
 
         // Read packets on connection, timout is 100 mS
-        // csp_packet_t *packet;
         loop {
-            let packet = csp_read(&mut conn, Duration::from_millis(100));
+            if stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+            // SAFETY: Connection is active while we read here.
+            let packet = unsafe { csp_read(conn.0, Duration::from_millis(100)) };
             if packet.is_none() {
                 break;
             }
+            let mut packet = packet.unwrap();
+            match csp_conn_dport(conn.0) {
+                MY_SERVER_PORT => {
+                    server_received.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    // Process packet here.
+                    println!(
+                        "packet received on MY_SERVER_PORT: {:x?}\n",
+                        packet.packet_data()
+                    );
+                }
+                _ => {
+                    csp_service_handler(&mut packet);
+                }
+            };
         }
-        /*
-        while ((packet = csp_read(conn, 50)) != NULL) {
-            switch (csp_conn_dport(conn)) {
-            case MY_SERVER_PORT:
-                /* Process packet here */
-                csp_print("Packet received on MY_SERVER_PORT: %s\n", (char *) packet->data);
-                csp_buffer_free(packet);
-                ++server_received;
-                break;
+        // No need to close, we accepted the connection with a guard.
+    }
+}
 
-            default:
-                /* Call the default CSP service handler, handle pings, buffer use, etc. */
-                csp_service_handler(packet);
-                break;
-            }
+fn client(stop_signal: Arc<AtomicBool>) {
+    println!("client task started");
+    let mut current_letter = 'A';
+
+    loop {
+        if stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
         }
-        */
+        if TEST_MODE {
+            thread::sleep(Duration::from_millis(20));
+        } else {
+            thread::sleep(Duration::from_millis(100));
+        }
+        // Send ping to server, timeout 1000 mS, ping size 100 bytes
+        if let Err(e) = csp_ping(
+            CSP_LOOPBACK,
+            Duration::from_millis(1000),
+            100,
+            SocketFlags::NONE,
+        ) {
+            println!("ping error: {:?}", e);
+        }
 
-        /* Close current connection */
-        // csp_close(conn);
+        // Send reboot request to server, the server has no actual implementation of
+        // csp_sys_reboot() and fails to reboot.
+        csp_reboot(CSP_LOOPBACK);
+        println!("reboot system request sent to address: {}", CSP_LOOPBACK);
+
+        // Send data packet (string) to server
+
+        // 1. Connect to host on 'server_address', port MY_SERVER_PORT with regular UDP-like
+        // protocol and 1000 ms timeout.
+        let conn = csp_connect_guarded(
+            MsgPriority::Normal,
+            CSP_LOOPBACK,
+            MY_SERVER_PORT as u8,
+            Duration::from_millis(1000),
+            ConnectOpts::NONE,
+        );
+        if conn.is_none() {
+            println!("CSP client: connection failed");
+            return;
+        }
+        let conn = conn.unwrap();
+
+        // 2. Get packet buffer for message/data.
+        let packet_ref = csp_buffer_get();
+        if packet_ref.is_none() {
+            println!("CSP client: failed to get CSP buffer");
+            return;
+        }
+        let mut packet_ref = packet_ref.unwrap();
+
+        // 3. Copy data to packet.
+        let mut string_to_set = String::from("Hello world");
+        string_to_set.push(' ');
+        string_to_set.push(current_letter);
+        current_letter = (current_letter as u8 + 1) as char;
+        string_to_set.push('\0');
+        packet_ref.set_data(string_to_set.as_bytes());
+
+        // 4. Send data.
+        csp_send(conn.0, packet_ref);
     }
 }

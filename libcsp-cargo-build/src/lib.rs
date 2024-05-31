@@ -46,6 +46,8 @@ const SRCS_LIST: &[&str] = &[
     "csp_port.c",
     "csp_route.c",
     "csp_dedup.c",
+    "csp_services.c",
+    "csp_service_handler.c",
     "interfaces/csp_if_lo.c",
     "interfaces/csp_if_kiss.c",
     "interfaces/csp_if_tun.c",

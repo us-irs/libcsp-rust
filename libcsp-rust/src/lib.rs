@@ -50,6 +50,7 @@ pub enum CspError {
 
 /// Listen on all ports, primarily used with [csp_bind]
 pub const CSP_ANY: u8 = 255;
+pub const CSP_LOOPBACK: u16 = 0;
 
 bitflags! {
     pub struct SocketFlags: u32 {
@@ -101,11 +102,32 @@ pub enum MsgPriority {
 
 pub struct CspPacket(pub csp_packet_s);
 
-pub struct CspPacketRef<'a>(&'a csp_packet_s);
+pub struct CspPacketRef<'a>(&'a mut csp_packet_s);
 
 impl<'a> CspPacketRef<'a> {
-    pub fn packet_data(&self) -> &'a [u8; ffi::CSP_BUFFER_SIZE] {
+    pub fn packet_data(&self) -> &[u8] {
+        unsafe { &self.0.packet_data_union.data[..self.packet_length()] }
+    }
+
+    pub fn whole_data(&self) -> &[u8; ffi::CSP_BUFFER_SIZE] {
         unsafe { &self.0.packet_data_union.data }
+    }
+
+    pub fn whole_data_mut(&mut self) -> &mut [u8; ffi::CSP_BUFFER_SIZE] {
+        unsafe { &mut self.0.packet_data_union.data }
+    }
+
+    pub fn set_data(&mut self, data: &[u8]) -> bool {
+        if data.len() > self.whole_data().len() {
+            return false;
+        }
+        self.whole_data_mut()[0..data.len()].copy_from_slice(data);
+        self.0.length = data.len() as u16;
+        true
+    }
+
+    pub fn packet_length(&self) -> usize {
+        self.0.length.into()
     }
 
     pub fn inner(&self) -> *const csp_packet_s {
@@ -188,10 +210,11 @@ pub fn csp_route_work() -> Result<(), CspError> {
     if result == CspError::None as i32 {
         return Ok(());
     }
-    Err(CspError::try_from(result).expect("unexpected error type from csp_route_work"))
+    Err(CspError::try_from(result)
+        .unwrap_or_else(|_| panic!("unexpected error value {} from csp_route_work", result)))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct CspConn(csp_conn_s);
 
 impl CspConn {
@@ -202,6 +225,30 @@ impl CspConn {
     pub fn addr(&self) -> u8 {
         self.0.address
     }
+}
+
+pub struct CspConnGuard(pub CspConn);
+
+impl Drop for CspConnGuard {
+    fn drop(&mut self) {
+        csp_close(self.0);
+    }
+}
+
+impl AsRef<CspConn> for CspConnGuard {
+    fn as_ref(&self) -> &CspConn {
+        &self.0
+    }
+}
+
+impl AsMut<CspConn> for CspConnGuard {
+    fn as_mut(&mut self) -> &mut CspConn {
+        &mut self.0
+    }
+}
+
+pub fn csp_accept_guarded(socket: &mut CspSocket, timeout: Duration) -> Option<CspConnGuard> {
+    Some(CspConnGuard(csp_accept(socket, timeout)?))
 }
 
 /// Rust wrapper for [ffi::csp_accept].
@@ -220,7 +267,11 @@ pub fn csp_accept(socket: &mut CspSocket, timeout: Duration) -> Option<CspConn> 
 }
 
 /// Rust wrapper for [ffi::csp_read].
-pub fn csp_read(conn: &mut CspConn, timeout: Duration) -> Option<CspPacketRef<'_>> {
+///
+/// # Safety
+///
+/// - You MUST ensure that a connection is active when calling this function.
+pub unsafe fn csp_read<'a>(mut conn: CspConn, timeout: Duration) -> Option<CspPacketRef<'a>> {
     let timeout_millis = timeout.as_millis();
     if timeout_millis > u32::MAX as u128 {
         return None;
@@ -229,7 +280,125 @@ pub fn csp_read(conn: &mut CspConn, timeout: Duration) -> Option<CspPacketRef<'_
     if opt_packet.is_null() {
         return None;
     }
-    // SAFETY: FFI pointer. As long as it is used beyond the lifetime of the connection, this
-    // should be fine. The passed [CspConn] value should ensure that.
+    // SAFETY: FFI pointer.
     Some(CspPacketRef(unsafe { &mut *opt_packet }))
+}
+
+/// Rust wrapper for [ffi::csp_conn_dport].
+pub fn csp_conn_dport(mut conn: CspConn) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_conn_dport(&mut conn.0) }
+}
+
+pub fn csp_service_handler(packet: &mut CspPacketRef) {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_service_handler(&mut *packet.0) }
+}
+
+/// Rust wrapper for [ffi::csp_close].
+pub fn csp_close(mut conn: CspConn) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_close(&mut conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_ping], returns the result code directly.
+pub fn csp_ping_raw(node: u16, timeout: Duration, size: usize, opts: SocketFlags) -> i32 {
+    // SAFETY: FFI call.
+    unsafe {
+        ffi::csp_ping(
+            node,
+            timeout.as_millis() as u32,
+            size as u32,
+            opts.bits() as u8,
+        )
+    }
+}
+
+/// Rust wrapper for [ffi::csp_ping].
+pub fn csp_ping(
+    node: u16,
+    timeout: Duration,
+    size: usize,
+    opts: SocketFlags,
+) -> Result<(), CspError> {
+    let result = csp_ping_raw(node, timeout, size, opts);
+    if result == CspError::None as i32 {
+        return Ok(());
+    }
+    Err(CspError::try_from(result)
+        .unwrap_or_else(|_| panic!("unexpected error value {} from csp_ping", result)))
+}
+
+/// Rust wrapper for [ffi::csp_reboot].
+pub fn csp_reboot(node: u16) {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_reboot(node) }
+}
+
+/// Rust wrapper for [ffi::csp_connect].
+pub fn csp_connect(
+    prio: MsgPriority,
+    dst: u16,
+    dst_port: u8,
+    timeout: Duration,
+    opts: ConnectOpts,
+) -> Option<CspConn> {
+    // SAFETY: FFI call.
+    let conn = unsafe {
+        ffi::csp_connect(
+            prio as u8,
+            dst,
+            dst_port,
+            timeout.as_millis() as u32,
+            opts.bits(),
+        )
+    };
+    if conn.is_null() {
+        return None;
+    }
+    // SAFETY: We checked that the pointer is valid.
+    Some(CspConn::new(unsafe { *conn }.address))
+}
+
+/// Rust wrapper for [ffi::csp_connect] which returns a guard structure. The connection will be
+/// be closed automatically when the guard structure is dropped.
+pub fn csp_connect_guarded(
+    prio: MsgPriority,
+    dst: u16,
+    dst_port: u8,
+    timeout: Duration,
+    opts: ConnectOpts,
+) -> Option<CspConnGuard> {
+    Some(CspConnGuard(csp_connect(
+        prio, dst, dst_port, timeout, opts,
+    )?))
+}
+
+/// Rust wrapper for [ffi::csp_buffer_get].
+pub fn csp_buffer_get() -> Option<CspPacketRef<'static>> {
+    let packet_ref = unsafe {
+        // The size argument is unused
+        ffi::csp_buffer_get(0)
+    };
+    if packet_ref.is_null() {
+        return None;
+    }
+    // SAFETY: We checked that the pointer is valid.
+    Some(CspPacketRef(unsafe { &mut *packet_ref }))
+}
+
+/// Rust wrapper for [ffi::csp_send].
+pub fn csp_send(mut conn: CspConn, packet: CspPacketRef) {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_send(&mut conn.0, packet.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_print_table].
+pub fn csp_conn_print_table() {
+    unsafe { ffi::csp_conn_print_table() }
+}
+
+/// Rust wrapper for [ffi::csp_iflist_print].
+pub fn csp_iflist_print() {
+    unsafe { ffi::csp_iflist_print() }
 }

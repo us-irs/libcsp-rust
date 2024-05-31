@@ -188,6 +188,46 @@ extern "C" {
 
     #[doc = " Read packet from a connection.\n This fuction will wait on the connection's RX queue for the specified timeout.\n\n @param[in] conn  connection\n @param[in] timeout timeout in mS to wait for a packet, use CSP_MAX_TIMEOUT for infinite timeout.\n @return Packet or NULL in case of failure or timeout."]
     pub fn csp_read(conn: *mut csp_conn_t, timeout: u32) -> *mut csp_packet_t;
+
+    #[doc = " Handle CSP service request.\n If the given packet is a service-request (the destination port matches one of CSP service ports #csp_service_port_t),\n the packet will be processed by the specific CSP service handler.\n The packet will either process it or free it, so this function is typically called in the last \"default\" clause of\n a switch/case statement in a CSP listener task.\n In order to listen to csp service ports, bind your listener to the specific services ports #csp_service_port_t or\n use #CSP_ANY to all ports.\n\n @param[in] packet first packet, obtained by using csp_read()"]
+    pub fn csp_service_handler(packet: *mut csp_packet_t);
+
+    #[doc = " Close an open connection.\n Any packets in the RX queue will be freed.\n\n @param[in] conn connection. Closing a NULL connection is acceptable.\n @return #CSP_ERR_NONE on success, otherwise an error code."]
+    pub fn csp_close(conn: *mut csp_conn_t) -> ::core::ffi::c_int;
+
+    #[doc = " Send a single ping/echo packet.\n\n @param[in] node address of subsystem.\n @param[in] timeout timeout in ms to wait for reply.\n @param[in] size payload size in bytes.\n @param[in] opts connection options, see @ref CSP_CONNECTION_OPTIONS.\n @return >=0 echo time in mS on success, otherwise -1 for error."]
+    pub fn csp_ping(
+        node: u16,
+        timeout: u32,
+        size: ::core::ffi::c_uint,
+        opts: u8,
+    ) -> ::core::ffi::c_int;
+
+    #[doc = " Reboot subsystem.\n If handled by the standard CSP service handler, the reboot handler set by csp_sys_set_reboot() on the subsystem, will be invoked.\n\n @param[in] node address of subsystem.\n"]
+    pub fn csp_reboot(node: u16);
+
+    #[doc = " Establish outgoing connection.\n The call will return immediately, unless it is a RDP connection (#CSP_O_RDP) in which case it will wait until the other\n end acknowleges the connection (timeout is determined by the current connection timeout set by csp_rdp_set_opt()).\n\n @param[in] prio priority, see #csp_prio_t\n @param[in] dst Destination address\n @param[in] dst_port Destination port\n @param[in] timeout unused.\n @param[in] opts connection options, see @ref CSP_CONNECTION_OPTIONS.\n @return Established connection or NULL on failure (no free connections, timeout)."]
+    pub fn csp_connect(
+        prio: u8,
+        dst: u16,
+        dst_port: u8,
+        timeout: u32,
+        opts: u32,
+    ) -> *mut csp_conn_t;
+
+    #[doc = " Return destination port of connection.\n\n @param[in] conn connection\n @return destination port of an incoming connection"]
+    pub fn csp_conn_dport(conn: *mut csp_conn_t) -> ::core::ffi::c_int;
+
+    #[doc = " Get free buffer from task context.\n\n @param[in] unused OBSOLETE ignored field, csp packets have a fixed size now\n @return Buffer pointer to #csp_packet_t or NULL if no buffers available"]
+    pub fn csp_buffer_get(unused: usize) -> *mut csp_packet_t;
+
+    #[doc = " Send packet on a connection.\n The packet buffer is automatically freed, and cannot be used after the call to csp_send()\n\n @param[in] conn connection\n @param[in] packet packet to send"]
+    pub fn csp_send(conn: *mut csp_conn_t, packet: *mut csp_packet_t);
+
+    #[doc = " Print connection table to stdout."]
+    pub fn csp_conn_print_table();
+
+    pub fn csp_iflist_print();
 }
 
 #[cfg(test)]
