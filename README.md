@@ -1,7 +1,7 @@
 libcsp-rust
 =========
 
-This project aims to provide libraries and tools to use
+This project aims to provide libraries and tools build and use
 [`libcsp`](https://github.com/libcsp/libcsp) in your Rust project.
 
 It provides 2 crates for this:
