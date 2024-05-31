@@ -1,6 +1,6 @@
 use std::{
     io::{self, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 pub mod autoconf {
@@ -64,23 +64,23 @@ const ARCH_SRCS_UNIX: &[&str] = &[
 ];
 
 pub struct Config {
-    have_stdio: bool,
-    print_stdio: bool,
-    reproducible_builds: bool,
-    qfifo_len: u32,
-    port_max_bind: u32,
-    conn_rx_queue_len: u32,
-    conn_max: u32,
-    buffer_size: u32,
-    buffer_count: u32,
-    rdp_max_window: u32,
-    rtable_size: u32,
-    hmac: bool,
-    rtable: bool,
-    csp_print: bool,
-    promisc: bool,
-    rdp: bool,
-    yaml: bool,
+    pub have_stdio: bool,
+    pub print_stdio: bool,
+    pub reproducible_builds: bool,
+    pub qfifo_len: u32,
+    pub port_max_bind: u32,
+    pub conn_rx_queue_len: u32,
+    pub conn_max: u32,
+    pub buffer_size: u32,
+    pub buffer_count: u32,
+    pub rdp_max_window: u32,
+    pub rtable_size: u32,
+    pub hmac: bool,
+    pub rtable: bool,
+    pub csp_print: bool,
+    pub promisc: bool,
+    pub rdp: bool,
+    pub yaml: bool,
 }
 
 impl Default for Config {
@@ -112,7 +112,7 @@ pub struct Builder {
     libcsp_path: PathBuf,
     libcsp_src_path_base: PathBuf,
     out_dir: PathBuf,
-    cfg: Config,
+    pub cfg: Config,
     build: cc::Build,
 }
 
@@ -136,7 +136,7 @@ impl Builder {
 
     pub fn compile(&mut self) -> io::Result<()> {
         if self.generate_autoconf_file {
-            self.generate_autoconf_file()?;
+            self.generate_autoconf_header_file_default_location()?;
         }
         for src in SRCS_LIST {
             let mut next_file = self.libcsp_src_path_base.clone();
@@ -194,20 +194,25 @@ impl Builder {
         }
     }
 
-    pub fn generate_autoconf_file(&mut self) -> io::Result<()> {
+    pub fn generate_autoconf_header_file_default_location(&mut self) -> io::Result<()> {
         let mut autoconf_dir = self.out_dir.join("cfg");
         self.build.include(&autoconf_dir);
         autoconf_dir.push("csp");
         std::fs::create_dir_all(&autoconf_dir)?;
-        generate_autoconf_header_file(autoconf_dir, &self.cfg)
+        generate_autoconf_header_file(&autoconf_dir, &self.cfg)
     }
 
-    pub fn generate_autoconf_rust_file(&self, out_dir: PathBuf) -> io::Result<()> {
-        generate_autoconf_rust_file(out_dir, &self.cfg)
+    pub fn generate_autoconf_header_file(&mut self, dir: impl AsRef<Path>) -> io::Result<()> {
+        generate_autoconf_header_file(dir, &self.cfg)
+    }
+
+    pub fn generate_autoconf_rust_file(&self, dir: impl AsRef<Path>) -> io::Result<()> {
+        generate_autoconf_rust_file(dir, &self.cfg)
     }
 }
 
-pub fn generate_autoconf_header_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> {
+pub fn generate_autoconf_header_file(out_dir: impl AsRef<Path>, cfg: &Config) -> io::Result<()> {
+    let out_dir = out_dir.as_ref();
     let mut autoconf_file_string = String::new();
     #[cfg(unix)]
     autoconf_file_string.push_str("#define CSP_POSIX 1\n");
@@ -310,40 +315,41 @@ pub fn generate_autoconf_header_file(out_dir: PathBuf, cfg: &Config) -> io::Resu
     Ok(())
 }
 
-pub fn generate_autoconf_rust_file(out_dir: PathBuf, cfg: &Config) -> io::Result<()> {
+pub fn generate_autoconf_rust_file(out_dir: impl AsRef<Path>, cfg: &Config) -> io::Result<()> {
+    let out_dir = out_dir.as_ref();
     let mut autoconf_file_string = String::new();
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_CONN_RXQUEUE_LEN,
         cfg.conn_rx_queue_len
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_QFIFO_LEN,
         cfg.qfifo_len
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_PORT_MAX_BIND,
         cfg.port_max_bind
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_CONN_MAX,
         cfg.conn_max
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_BUFFER_SIZE,
         cfg.buffer_size
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_RDP_MAX_WINDOW,
         cfg.rdp_max_window
     ));
     autoconf_file_string.push_str(&format!(
-        "const {}: usize = {}\n",
+        "pub const {}: usize = {};\n",
         autoconf::CFG_RTABLE_SIZE,
         cfg.rtable_size
     ));

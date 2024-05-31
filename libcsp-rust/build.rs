@@ -13,7 +13,6 @@ fn main() {
             env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set")
         }
     };
-    println!("cargo:warning=CSP_CONFIG_DIR={}", csp_conf_dir);
     let mut csp_conf_path = PathBuf::new();
     csp_conf_path.push(csp_conf_dir);
     csp_conf_path.push("autoconfig.rs");

@@ -5,8 +5,8 @@ extern crate alloc;
 #[cfg(any(feature = "std", test))]
 extern crate std;
 
-pub mod ffi;
 pub mod config;
+pub mod ffi;
 
 use core::time::Duration;
 
