@@ -45,10 +45,13 @@ const SRCS_LIST: &[&str] = &[
     "csp_qfifo.c",
     "csp_port.c",
     "csp_route.c",
+    "csp_dedup.c",
     "interfaces/csp_if_lo.c",
     "interfaces/csp_if_kiss.c",
     "interfaces/csp_if_tun.c",
     "interfaces/csp_if_udp.c",
+    "crypto/csp_hmac.c",
+    "crypto/csp_sha1.c",
 ];
 
 const ARCH_SRCS_UNIX: &[&str] = &[

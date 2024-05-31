@@ -6,3 +6,4 @@ links = "csp"
 
 [dependencies]
 bitflags = "2"
+num_enum = "0.7"

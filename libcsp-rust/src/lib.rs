@@ -1,6 +1,3 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
 #![no_std]
 
 #[cfg(feature = "alloc")]
@@ -8,7 +5,13 @@ extern crate alloc;
 #[cfg(any(feature = "std", test))]
 extern crate std;
 
+pub mod ffi;
+use core::time::Duration;
+
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
 use bitflags::bitflags;
+use ffi::{csp_conn_s, csp_packet_s, csp_socket_s};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ReservedPorts {
@@ -21,7 +24,7 @@ pub enum ReservedPorts {
     Uptime = 6,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, TryFromPrimitive, IntoPrimitive)]
 #[repr(i32)]
 pub enum CspError {
     None = 0,
@@ -44,14 +47,7 @@ pub enum CspError {
 }
 
 /// Listen on all ports, primarily used with [csp_bind]
-pub const CSP_ANY: u32 = 255;
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_timestamp_t {
-    pub tv_sec: u32,
-    pub tv_nsec: u32,
-}
+pub const CSP_ANY: u8 = 255;
 
 bitflags! {
     pub struct SocketFlags: u32 {
@@ -93,18 +89,6 @@ bitflags! {
     }
 }
 
-#[doc = "CSP identifier/header."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Default)]
-pub struct csp_id_t {
-    pub pri: u8,
-    pub flags: u8,
-    pub src: u16,
-    pub dst: u16,
-    pub dport: u8,
-    pub sport: u8,
-}
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MsgPriority {
     Critical = 0,
@@ -113,105 +97,23 @@ pub enum MsgPriority {
     Low = 3,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_conn_s {
-    pub _address: u8,
-}
-
-#[doc = " CSP Packet.\n\n This structure is constructed to fit with all interface and protocols to prevent the\n need to copy data (zero copy).\n\n .. note:: In most cases a CSP packet cannot be reused in case of send failure, because the\n \t\t\t lower layers may add additional data causing increased length (e.g. CRC32), convert\n \t\t\t the CSP id to different endian (e.g. I2C), etc.\n"]
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct csp_packet_s {
-    pub packet_info: csp_packet_s_anon_union,
-    pub length: u16,
-    pub id: csp_id_t,
-    pub next: *mut csp_packet_s,
-    #[doc = " Additional header bytes, to prepend packed data before transmission\n This must be minimum 6 bytes to accomodate CSP 2.0. But some implementations\n require much more scratch working area for encryption for example.\n\n Ultimately after csp_id_pack() this area will be filled with the CSP header"]
-    pub header: [u8; 8usize],
-    pub packet_data_union: csp_packet_s_data_union,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union csp_packet_s_anon_union {
-    pub rdp_only: csp_packet_s_anon_union_field_rdp_only,
-    pub rx_tx_only: csp_packet_s_anon_union_field_rx_tx_only,
-}
-
-impl Default for csp_packet_s_anon_union {
-    fn default() -> Self {
-        Self {
-            rdp_only: Default::default(),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_packet_s_anon_union_field_rdp_only {
-    pub rdp_quarantine: u32,
-    pub timestamp_tx: u32,
-    pub timestamp_rx: u32,
-    pub conn: *mut csp_conn_s,
-}
-
-impl Default for csp_packet_s_anon_union_field_rdp_only {
-    fn default() -> Self {
-        Self {
-            rdp_quarantine: Default::default(),
-            timestamp_tx: Default::default(),
-            timestamp_rx: Default::default(),
-            conn: core::ptr::null_mut(),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_packet_s_anon_union_field_rx_tx_only {
-    pub rx_count: u16,
-    pub remain: u16,
-    pub cfpid: u32,
-    pub last_used: u32,
-    pub frame_begin: *mut u8,
-    pub frame_length: u16,
-}
-
-impl Default for csp_packet_s_anon_union_field_rx_tx_only {
-    fn default() -> Self {
-        Self {
-            rx_count: Default::default(),
-            remain: Default::default(),
-            cfpid: Default::default(),
-            last_used: Default::default(),
-            frame_begin: core::ptr::null_mut(),
-            frame_length: Default::default(),
-        }
-    }
-}
-
-#[doc = " Data part of packet:"]
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union csp_packet_s_data_union {
-    pub data: [u8; 256usize],
-    pub data16: [u16; 128usize],
-    pub data32: [u32; 64usize],
-}
-
-impl Default for csp_packet_s_data_union {
-    fn default() -> Self {
-        Self {
-            data: [0; 256usize],
-        }
-    }
-}
-
-#[doc = " CSP Packet.\n\n This structure is constructed to fit with all interface and protocols to prevent the\n need to copy data (zero copy).\n\n .. note:: In most cases a CSP packet cannot be reused in case of send failure, because the\n \t\t\t lower layers may add additional data causing increased length (e.g. CRC32), convert\n \t\t\t the CSP id to different endian (e.g. I2C), etc.\n"]
-pub type csp_packet_t = csp_packet_s;
-
 pub struct CspPacket(pub csp_packet_s);
+
+pub struct CspPacketRef<'a>(&'a csp_packet_s);
+
+impl<'a> CspPacketRef<'a> {
+    pub fn packet_data(&self) -> &'a [u8; ffi::CSP_BUFFER_SIZE] {
+        unsafe { &self.0.packet_data_union.data }
+    }
+
+    pub fn inner(&self) -> *const csp_packet_s {
+        self.0
+    }
+
+    pub fn inner_mut(&self) -> *const csp_packet_s {
+        self.0
+    }
+}
 
 impl CspPacket {
     pub fn new() -> Self {
@@ -232,472 +134,100 @@ impl Default for CspPacket {
     }
 }
 
-pub type csp_queue_handle_t = *mut core::ffi::c_void;
-pub type csp_static_queue_t = *mut core::ffi::c_void;
+#[derive(Default)]
+pub struct CspSocket(pub csp_socket_s);
 
-#[doc = " @brief Connection struct"]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_socket_s {
-    pub rx_queue: csp_queue_handle_t,
-    pub rx_queue_static: csp_static_queue_t,
-    pub rx_queue_static_data: [core::ffi::c_char; 128usize],
-    pub opts: u32,
+impl CspSocket {
+    pub fn inner_as_mut_ptr(&mut self) -> *mut csp_socket_s {
+        &mut self.0
+    }
 }
 
-#[test]
-fn bindgen_test_layout_csp_socket_s() {
-    const UNINIT: ::std::mem::MaybeUninit<csp_socket_s> = ::std::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::std::mem::size_of::<csp_socket_s>(),
-        152usize,
-        concat!("Size of: ", stringify!(csp_socket_s))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<csp_socket_s>(),
-        8usize,
-        concat!("Alignment of ", stringify!(csp_socket_s))
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).rx_queue) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(csp_socket_s),
-            "::",
-            stringify!(rx_queue)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).rx_queue_static) as usize - ptr as usize },
-        8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(csp_socket_s),
-            "::",
-            stringify!(rx_queue_static)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).rx_queue_static_data) as usize - ptr as usize },
-        16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(csp_socket_s),
-            "::",
-            stringify!(rx_queue_static_data)
-        )
-    );
-    assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).opts) as usize - ptr as usize },
-        144usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(csp_socket_s),
-            "::",
-            stringify!(opts)
-        )
-    );
-}
-#[doc = " Forward declaration of socket structure"]
-pub type csp_socket_t = csp_socket_s;
-
-extern "C" {
-    #[doc = " Error counters"]
-    pub static mut csp_dbg_buffer_out: u8;
-    pub static mut csp_dbg_conn_out: u8;
-    pub static mut csp_dbg_conn_ovf: u8;
-    pub static mut csp_dbg_conn_noroute: u8;
-    pub static mut csp_dbg_inval_reply: u8;
-    pub static mut csp_dbg_errno: u8;
-    pub static mut csp_dbg_can_errno: u8;
-    pub static mut csp_dbg_eth_errno: u8;
-    pub static mut csp_dbg_rdp_print: u8;
-    pub static mut csp_dbg_packet_print: u8;
-
-    #[doc = " Initialize CSP.\n This will configure basic structures."]
-    pub fn csp_init();
-
-    pub fn csp_print_func(fmt: *const core::ffi::c_char, ...);
-
-    #[doc = " Bind port to socket.\n\n @param[in] socket socket to bind port to\n @param[in] port port number to bind, use #CSP_ANY for all ports. Bindnig to a specific will take precedence over #CSP_ANY.\n @return #CSP_ERR_NONE on success, otherwise an error code."]
-    pub fn csp_bind(socket: *mut csp_socket_t, port: u8) -> core::ffi::c_int;
+/// Rust wrapper for [ffi::csp_init]. Initialize the CSP stack.
+///
+/// # Safety
+///
+/// - You must call this function only once.
+pub unsafe fn csp_init() {
+    // SAFETY: FFI call
+    unsafe {
+        ffi::csp_init();
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use core::mem::{align_of, size_of};
-    use std::mem::MaybeUninit;
-
-    #[test]
-    fn bindgen_test_layout_csp_timestamp_t() {
-        const UNINIT: MaybeUninit<csp_timestamp_t> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            ::core::mem::size_of::<csp_timestamp_t>(),
-            8usize,
-            concat!("Size of: ", stringify!(csp_timestamp_t))
-        );
-        assert_eq!(
-            std::mem::align_of::<csp_timestamp_t>(),
-            4usize,
-            concat!("Alignment of ", stringify!(csp_timestamp_t))
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).tv_sec) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_timestamp_t),
-                "::",
-                stringify!(tv_sec)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).tv_nsec) as usize - ptr as usize },
-            4usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_timestamp_t),
-                "::",
-                stringify!(tv_nsec)
-            )
-        );
+/// Rust wrapper for [ffi::csp_bind].
+pub fn csp_bind(socket: &mut CspSocket, port: u8) {
+    // SAFETY: FFI call
+    unsafe {
+        ffi::csp_bind(socket.inner_as_mut_ptr(), port);
     }
+}
 
-    #[test]
-    fn bindgen_test_layout_csp_id() {
-        const UNINIT: MaybeUninit<csp_id_t> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            size_of::<csp_id_t>(),
-            8usize,
-            concat!("Size of: ", stringify!(__packed))
-        );
-        assert_eq!(
-            align_of::<csp_id_t>(),
-            2usize,
-            concat!("Alignment of ", stringify!(__packed))
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).pri) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(pri)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).flags) as usize - ptr as usize },
-            1usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(flags)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).src) as usize - ptr as usize },
-            2usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(src)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).dst) as usize - ptr as usize },
-            4usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(dst)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).dport) as usize - ptr as usize },
-            6usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(dport)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).sport) as usize - ptr as usize },
-            7usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__packed),
-                "::",
-                stringify!(sport)
-            )
-        );
+/// Rust wrapper for [ffi::csp_listen].
+pub fn csp_listen(socket: &mut CspSocket, backlog: usize) {
+    // SAFETY: FFI call
+    unsafe {
+        ffi::csp_listen(socket.inner_as_mut_ptr(), backlog);
+    }
+}
+
+/// Rust wrapper for [ffi::csp_route_work].
+pub fn csp_route_work_raw() -> i32 {
+    unsafe { ffi::csp_route_work() }
+}
+
+/// Rust wrapper for [ffi::csp_route_work] which also converts errors to the [CspError] type.
+/// This function will panic if the returned error type is not among the known values of
+/// [CspError].
+///
+/// [csp_route_work_raw] can be used if this is not acceptable.
+pub fn csp_route_work() -> Result<(), CspError> {
+    let result = unsafe { ffi::csp_route_work() };
+    if result == CspError::None as i32 {
+        return Ok(());
+    }
+    Err(CspError::try_from(result).expect("unexpected error type from csp_route_work"))
+}
+
+#[derive(Debug, Clone)]
+pub struct CspConn(csp_conn_s);
+
+impl CspConn {
+    fn new(address: u8) -> Self {
+        Self(csp_conn_s { address })
     }
 
-    #[test]
-    fn bindgen_test_layout_csp_packet_s__bindgen_ty_1__bindgen_ty_1() {
-        const UNINIT: MaybeUninit<csp_packet_s_anon_union_field_rdp_only> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            size_of::<csp_packet_s_anon_union_field_rdp_only>(),
-            24usize,
-            concat!(
-                "Size of: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1)
-            )
-        );
-        assert_eq!(
-            align_of::<csp_packet_s_anon_union_field_rdp_only>(),
-            8usize,
-            concat!(
-                "Alignment of ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rdp_quarantine) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1),
-                "::",
-                stringify!(rdp_quarantine)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).timestamp_tx) as usize - ptr as usize },
-            4usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1),
-                "::",
-                stringify!(timestamp_tx)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).timestamp_rx) as usize - ptr as usize },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1),
-                "::",
-                stringify!(timestamp_rx)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).conn) as usize - ptr as usize },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_1),
-                "::",
-                stringify!(conn)
-            )
-        );
+    pub fn addr(&self) -> u8 {
+        self.0.address
     }
+}
 
-    #[test]
-    fn bindgen_test_layout_csp_packet_s__bindgen_ty_1__bindgen_ty_2() {
-        const UNINIT: MaybeUninit<csp_packet_s_anon_union_field_rx_tx_only> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            size_of::<csp_packet_s_anon_union_field_rx_tx_only>(),
-            32usize,
-            concat!(
-                "Size of: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2)
-            )
-        );
-        assert_eq!(
-            align_of::<csp_packet_s_anon_union_field_rx_tx_only>(),
-            8usize,
-            concat!(
-                "Alignment of ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rx_count) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(rx_count)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).remain) as usize - ptr as usize },
-            2usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(remain)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).cfpid) as usize - ptr as usize },
-            4usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(cfpid)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).last_used) as usize - ptr as usize },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(last_used)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).frame_begin) as usize - ptr as usize },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(frame_begin)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).frame_length) as usize - ptr as usize },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_1__bindgen_ty_2),
-                "::",
-                stringify!(frame_length)
-            )
-        );
+/// Rust wrapper for [ffi::csp_accept].
+pub fn csp_accept(socket: &mut CspSocket, timeout: Duration) -> Option<CspConn> {
+    let timeout_millis = timeout.as_millis();
+    if timeout_millis > u32::MAX as u128 {
+        return None;
     }
-    #[test]
-    fn bindgen_test_layout_csp_packet_s__bindgen_ty_1() {
-        assert_eq!(
-            size_of::<csp_packet_s_anon_union>(),
-            32usize,
-            concat!("Size of: ", stringify!(csp_packet_s_anon_union))
-        );
-        assert_eq!(
-            align_of::<csp_packet_s_anon_union>(),
-            8usize,
-            concat!("Alignment of ", stringify!(csp_packet_s_anon_union))
-        );
-    }
+    Some(CspConn::new(unsafe {
+        let addr = ffi::csp_accept(socket.inner_as_mut_ptr(), timeout_millis as u32);
+        if addr.is_null() {
+            return None;
+        }
+        (*addr).address
+    }))
+}
 
-    #[test]
-    fn bindgen_test_layout_csp_packet_s__bindgen_ty_2() {
-        const UNINIT: MaybeUninit<csp_packet_s_data_union> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            size_of::<csp_packet_s_data_union>(),
-            256usize,
-            concat!("Size of: ", stringify!(csp_packet_s__bindgen_ty_2))
-        );
-        assert_eq!(
-            align_of::<csp_packet_s_data_union>(),
-            4usize,
-            concat!("Alignment of ", stringify!(csp_packet_s__bindgen_ty_2))
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_2),
-                "::",
-                stringify!(data)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data16) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_2),
-                "::",
-                stringify!(data16)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data32) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s__bindgen_ty_2),
-                "::",
-                stringify!(data32)
-            )
-        );
+/// Rust wrapper for [ffi::csp_read].
+pub fn csp_read(conn: &mut CspConn, timeout: Duration) -> Option<CspPacketRef<'_>> {
+    let timeout_millis = timeout.as_millis();
+    if timeout_millis > u32::MAX as u128 {
+        return None;
     }
-    #[test]
-    fn bindgen_test_layout_csp_packet_s() {
-        const UNINIT: MaybeUninit<csp_packet_s> = MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            size_of::<csp_packet_s>(),
-            320usize,
-            concat!("Size of: ", stringify!(csp_packet_s))
-        );
-        assert_eq!(
-            align_of::<csp_packet_s>(),
-            8usize,
-            concat!("Alignment of ", stringify!(csp_packet_s))
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).length) as usize - ptr as usize },
-            32usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s),
-                "::",
-                stringify!(length)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize },
-            34usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s),
-                "::",
-                stringify!(id)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).next) as usize - ptr as usize },
-            48usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s),
-                "::",
-                stringify!(next)
-            )
-        );
-        assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).header) as usize - ptr as usize },
-            56usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(csp_packet_s),
-                "::",
-                stringify!(header)
-            )
-        );
+    let opt_packet = unsafe { ffi::csp_read(&mut conn.0, timeout_millis as u32) };
+    if opt_packet.is_null() {
+        return None;
     }
+    // SAFETY: FFI pointer. As long as it is used beyond the lifetime of the connection, this
+    // should be fine. The passed [CspConn] value should ensure that.
+    Some(CspPacketRef(unsafe { &mut *opt_packet }))
 }
