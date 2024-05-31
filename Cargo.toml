@@ -1,8 +1,5 @@
 [workspace]
-
 members = [
     "libcsp-cargo-build", "libcsp-rust", "examples"
 ]
-
-
 resolver = "2"
