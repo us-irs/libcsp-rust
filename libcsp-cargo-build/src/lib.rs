@@ -286,6 +286,7 @@ pub fn generate_autoconf_header_file(out_dir: impl AsRef<Path>, cfg: &Config) ->
         cfg.rtable_size
     ));
 
+    autoconf_file_string.push('\n');
     autoconf_file_string.push_str(&format!(
         "#define {} {}\n",
         autoconf::CFG_USE_RDP,
@@ -307,6 +308,7 @@ pub fn generate_autoconf_header_file(out_dir: impl AsRef<Path>, cfg: &Config) ->
         cfg.rtable as u32
     ));
 
+    autoconf_file_string.push('\n');
     // TODO: Maybe those will be added at some point..
     autoconf_file_string.push_str(&format!(
         "#define {} {}\n",
