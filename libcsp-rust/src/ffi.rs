@@ -26,14 +26,6 @@ pub struct csp_id_t {
     pub sport: u8,
 }
 
-/*
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct csp_conn_s {
-    pub address: u8,
-}
-*/
-
 #[doc = " CSP Packet.\n\n This structure is constructed to fit with all interface and protocols to prevent the\n need to copy data (zero copy).\n\n .. note:: In most cases a CSP packet cannot be reused in case of send failure, because the\n \t\t\t lower layers may add additional data causing increased length (e.g. CRC32), convert\n \t\t\t the CSP id to different endian (e.g. I2C), etc.\n"]
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -255,6 +247,31 @@ extern "C" {
     #[doc = " Read packet from a connection.\n This fuction will wait on the connection's RX queue for the specified timeout.\n\n @param[in] conn  connection\n @param[in] timeout timeout in mS to wait for a packet, use CSP_MAX_TIMEOUT for infinite timeout.\n @return Packet or NULL in case of failure or timeout."]
     pub fn csp_read(conn: *mut csp_conn_t, timeout: u32) -> *mut csp_packet_t;
 
+    #[doc = " Send packet on a connection.\n The packet buffer is automatically freed, and cannot be used after the call to csp_send()\n\n @param[in] conn connection\n @param[in] packet packet to send"]
+    pub fn csp_send(conn: *mut csp_conn_t, packet: *mut csp_packet_t);
+
+    #[doc = " Change the default priority of the connection and send a packet.\n\n .. note:: The priority of the connection will be changed.\n           If you need to change it back, call csp_send_prio() again.\n\n @param[in] prio priority to set on the connection\n @param[in] conn connection\n @param[in] packet packet to send"]
+    pub fn csp_send_prio(prio: u8, conn: *mut csp_conn_t, packet: *mut csp_packet_t);
+
+    #[doc = " Send a packet as a reply to a request (without a connection).\n Calls csp_sendto() with the source address and port from the request.\n\n @param[in] request incoming request\n @param[out] reply reply packet\n @param[in] opts connection options, see @ref CSP_CONNECTION_OPTIONS."]
+    pub fn csp_sendto_reply(request: *const csp_packet_t, reply: *mut csp_packet_t, opts: u32);
+
+    #[doc = " Read data from a connection-less server socket.\n\n @param[in] socket connection-less socket.\n @param[in] timeout timeout in mS to wait for a packet, use #CSP_MAX_TIMEOUT for infinite timeout.\n @return Packet on success, or NULL on failure or timeout."]
+    pub fn csp_recvfrom(socket: *mut csp_socket_t, timeout: u32) -> *mut csp_packet_t;
+
+    #[doc = " Perform an entire request & reply transaction.\n Creates a connection, send \\a outbuf, wait for reply, copy reply to \\a inbuf and close the connection.\n\n @param[in] prio priority, see #csp_prio_t\n @param[in] dst destination address\n @param[in] dst_port destination port\n @param[in] timeout timeout in mS to wait for a reply\n @param[in] outbuf outgoing data (request)\n @param[in] outlen length of data in \\a outbuf (request)\n @param[out] inbuf user provided buffer for receiving data (reply)\n @param[in] inlen length of expected reply, -1 for unknown size (inbuf MUST be large enough), 0 for no reply.\n @param[in] opts connection options, see @ref CSP_CONNECTION_OPTIONS.\n\n Returns:\n   int: 1 or reply size on success, 0 on failure (error, incoming length does not match, timeout)"]
+    pub fn csp_transaction_w_opts(
+        prio: u8,
+        dst: u16,
+        dst_port: u8,
+        timeout: u32,
+        outbuf: *mut ::core::ffi::c_void,
+        outlen: ::core::ffi::c_int,
+        inbuf: *mut ::core::ffi::c_void,
+        inlen: ::core::ffi::c_int,
+        opts: u32,
+    ) -> ::core::ffi::c_int;
+
     #[doc = " Handle CSP service request.\n If the given packet is a service-request (the destination port matches one of CSP service ports #csp_service_port_t),\n the packet will be processed by the specific CSP service handler.\n The packet will either process it or free it, so this function is typically called in the last \"default\" clause of\n a switch/case statement in a CSP listener task.\n In order to listen to csp service ports, bind your listener to the specific services ports #csp_service_port_t or\n use #CSP_ANY to all ports.\n\n @param[in] packet first packet, obtained by using csp_read()"]
     pub fn csp_service_handler(packet: *mut csp_packet_t);
 
@@ -267,6 +284,16 @@ extern "C" {
         timeout: u32,
         size: ::core::ffi::c_uint,
         opts: u8,
+    ) -> ::core::ffi::c_int;
+
+    #[doc = " Perform an entire request & reply transaction on an existing connection.\n Send \\a outbuf, wait for reply and copy reply to \\a inbuf.\n\n @param[in] conn connection\n @param[in] timeout timeout in mS to wait for a reply\n @param[in] outbuf outgoing data (request)\n @param[in] outlen length of data in \\a outbuf (request)\n @param[out] inbuf user provided buffer for receiving data (reply)\n @param[in] inlen length of expected reply, -1 for unknown size (inbuf MUST be large enough), 0 for no reply.\n @return 1 or reply size on success, 0 on failure (error, incoming length does not match, timeout)"]
+    pub fn csp_transaction_persistent(
+        conn: *mut csp_conn_t,
+        timeout: u32,
+        outbuf: *mut ::core::ffi::c_void,
+        outlen: ::core::ffi::c_int,
+        inbuf: *mut ::core::ffi::c_void,
+        inlen: ::core::ffi::c_int,
     ) -> ::core::ffi::c_int;
 
     #[doc = " Reboot subsystem.\n If handled by the standard CSP service handler, the reboot handler set by csp_sys_set_reboot() on the subsystem, will be invoked.\n\n @param[in] node address of subsystem.\n"]
@@ -286,9 +313,6 @@ extern "C" {
 
     #[doc = " Get free buffer from task context.\n\n @param[in] unused OBSOLETE ignored field, csp packets have a fixed size now\n @return Buffer pointer to #csp_packet_t or NULL if no buffers available"]
     pub fn csp_buffer_get(unused: usize) -> *mut csp_packet_t;
-
-    #[doc = " Send packet on a connection.\n The packet buffer is automatically freed, and cannot be used after the call to csp_send()\n\n @param[in] conn connection\n @param[in] packet packet to send"]
-    pub fn csp_send(conn: *mut csp_conn_t, packet: *mut csp_packet_t);
 
     #[doc = " Free buffer (from task context).\n\n @param[in] buffer buffer to free. NULL is handled gracefully."]
     pub fn csp_buffer_free(buffer: *mut ::core::ffi::c_void);

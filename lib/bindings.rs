@@ -2253,7 +2253,7 @@ extern "C" {
         dst: u16,
         dst_port: u8,
         timeout: u32,
-        outbuf: *mut ::core::ffi::c_void,
+        outbuf: *const ::core::ffi::c_void,
         outlen: ::core::ffi::c_int,
         inbuf: *mut ::core::ffi::c_void,
         inlen: ::core::ffi::c_int,
@@ -2265,7 +2265,7 @@ extern "C" {
     pub fn csp_transaction_persistent(
         conn: *mut csp_conn_t,
         timeout: u32,
-        outbuf: *mut ::core::ffi::c_void,
+        outbuf: *const ::core::ffi::c_void,
         outlen: ::core::ffi::c_int,
         inbuf: *mut ::core::ffi::c_void,
         inlen: ::core::ffi::c_int,
