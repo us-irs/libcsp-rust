@@ -290,6 +290,9 @@ extern "C" {
     #[doc = " Send packet on a connection.\n The packet buffer is automatically freed, and cannot be used after the call to csp_send()\n\n @param[in] conn connection\n @param[in] packet packet to send"]
     pub fn csp_send(conn: *mut csp_conn_t, packet: *mut csp_packet_t);
 
+    #[doc = " Free buffer (from task context).\n\n @param[in] buffer buffer to free. NULL is handled gracefully."]
+    pub fn csp_buffer_free(buffer: *mut ::core::ffi::c_void);
+
     #[doc = " Print connection table to stdout."]
     pub fn csp_conn_print_table();
 

@@ -16,7 +16,7 @@ use bitflags::bitflags;
 use ffi::{csp_conn_s, csp_packet_s, csp_socket_s};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum ReservedPorts {
+pub enum ReservedPort {
     Cmp = 0,
     Ping = 1,
     Ps = 2,
@@ -310,11 +310,7 @@ pub fn csp_accept(socket: &mut CspSocket, timeout: Duration) -> Option<CspConnRe
 }
 
 /// Rust wrapper for [ffi::csp_read].
-///
-/// # Safety
-///
-/// - You MUST ensure that a connection is active when calling this function.
-pub unsafe fn csp_read(conn: &mut CspConnRef, timeout: Duration) -> Option<CspPacketRef> {
+pub fn csp_read(conn: &mut CspConnRef, timeout: Duration) -> Option<CspPacketRef> {
     let timeout_millis = timeout.as_millis();
     if timeout_millis > u32::MAX as u128 {
         return None;
@@ -357,19 +353,21 @@ pub fn csp_ping_raw(node: u16, timeout: Duration, size: usize, opts: SocketFlags
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PingError;
+
 /// Rust wrapper for [ffi::csp_ping].
 pub fn csp_ping(
     node: u16,
     timeout: Duration,
     size: usize,
     opts: SocketFlags,
-) -> Result<(), CspError> {
+) -> Result<Duration, PingError> {
     let result = csp_ping_raw(node, timeout, size, opts);
-    if result == CspError::None as i32 {
-        return Ok(());
+    if result < 0 {
+        return Err(PingError);
     }
-    Err(CspError::try_from(result)
-        .unwrap_or_else(|_| panic!("unexpected error value {} from csp_ping", result)))
+    Ok(Duration::from_millis(result as u64))
 }
 
 /// Rust wrapper for [ffi::csp_reboot].
@@ -438,10 +436,18 @@ pub fn csp_send(conn: &mut CspConnRef, packet: impl Into<CspPacketRef>) {
 
 /// Rust wrapper for [ffi::csp_conn_print_table].
 pub fn csp_conn_print_table() {
+    // SAFETY: FFI call.
     unsafe { ffi::csp_conn_print_table() }
 }
 
 /// Rust wrapper for [ffi::csp_iflist_print].
 pub fn csp_iflist_print() {
+    // SAFETY: FFI call.
     unsafe { ffi::csp_iflist_print() }
+}
+
+pub fn csp_buffer_free(packet: impl Into<CspPacketRef>) {
+    // SAFETY: FFI call and the Rust type system actually ensure the correct type
+    // is free'd here.
+    unsafe { ffi::csp_buffer_free(packet.into().0 as *mut libc::c_void) }
 }

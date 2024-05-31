@@ -1,4 +1,5 @@
 use std::{
+    ffi::CStr,
     sync::{
         atomic::{AtomicBool, AtomicU32},
         Arc,
@@ -8,10 +9,10 @@ use std::{
 };
 
 use libcsp_rust::{
-    csp_accept_guarded, csp_bind, csp_buffer_get, csp_conn_dport, csp_conn_print_table,
-    csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping, csp_read, csp_reboot,
-    csp_route_work, csp_send, csp_service_handler, ConnectOpts, CspSocket, MsgPriority,
-    SocketFlags, CSP_ANY, CSP_LOOPBACK,
+    csp_accept_guarded, csp_bind, csp_buffer_free, csp_buffer_get, csp_conn_dport,
+    csp_conn_print_table, csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping,
+    csp_read, csp_reboot, csp_route_work, csp_send, csp_service_handler, ConnectOpts, CspSocket,
+    MsgPriority, SocketFlags, CSP_ANY, CSP_LOOPBACK,
 };
 
 const MY_SERVER_PORT: i32 = 10;
@@ -27,10 +28,14 @@ fn main() -> Result<(), u32> {
     let stop_signal = Arc::new(AtomicBool::new(false));
     let stop_signal_server = stop_signal.clone();
     let stop_signal_client = stop_signal.clone();
+    let stop_signal_router = stop_signal.clone();
     let server_received = Arc::new(AtomicU32::new(0));
     let server_recv_copy = server_received.clone();
 
-    let csp_router_jh = thread::spawn(|| loop {
+    let csp_router_jh = thread::spawn(move || loop {
+        if stop_signal_router.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
         if let Err(e) = csp_route_work() {
             match e {
                 libcsp_rust::CspError::TimedOut => continue,
@@ -42,11 +47,11 @@ fn main() -> Result<(), u32> {
         }
     });
 
-    let csp_server_jh = thread::spawn(|| {
+    let csp_server_jh = thread::spawn(move || {
         server(server_received, stop_signal_server);
     });
 
-    let csp_client_jh = thread::spawn(|| {
+    let csp_client_jh = thread::spawn(move || {
         client(stop_signal_client);
     });
 
@@ -102,7 +107,6 @@ fn server(server_received: Arc<AtomicU32>, stop_signal: Arc<AtomicBool>) {
         if conn.is_none() {
             continue;
         }
-        println!("server accepted conn");
         let mut conn = conn.unwrap();
 
         // Read packets on connection, timout is 100 mS
@@ -111,26 +115,22 @@ fn server(server_received: Arc<AtomicU32>, stop_signal: Arc<AtomicBool>) {
                 break;
             }
 
-            println!("server trying read");
             // SAFETY: Connection is active while we read here.
-            let packet = unsafe { csp_read(&mut conn.0, Duration::from_millis(100)) };
+            let packet = csp_read(&mut conn.0, Duration::from_millis(100));
             if packet.is_none() {
                 break;
             }
-            println!("server read a packet");
             let mut packet = packet.unwrap();
             match csp_conn_dport(&conn.0) {
                 MY_SERVER_PORT => {
-                    println!("server received packet on custom port");
                     server_received.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let cstr = CStr::from_bytes_with_nul(packet.packet_data())
+                        .expect("invalid packet data format, is not C string");
                     // Process packet here.
-                    println!(
-                        "packet received on MY_SERVER_PORT: {:x?}\n",
-                        packet.packet_data()
-                    );
+                    println!("packet received on MY_SERVER_PORT: {:?}", cstr);
+                    csp_buffer_free(packet);
                 }
                 _ => {
-                    println!("calling CSP service handler");
                     csp_service_handler(&mut packet);
                 }
             };
@@ -152,13 +152,12 @@ fn client(stop_signal: Arc<AtomicBool>) {
         } else {
             thread::sleep(Duration::from_millis(100));
         }
-        println!("client trying to ping");
 
-        // Send ping to server, timeout 1000 mS, ping size 100 bytes
+        // Send ping to server, timeout 1000 mS, ping size 20 bytes
         if let Err(e) = csp_ping(
             CSP_LOOPBACK,
             Duration::from_millis(1000),
-            100,
+            20,
             SocketFlags::NONE,
         ) {
             println!("ping error: {:?}", e);
@@ -167,7 +166,6 @@ fn client(stop_signal: Arc<AtomicBool>) {
         // Send reboot request to server, the server has no actual implementation of
         // csp_sys_reboot() and fails to reboot.
         csp_reboot(CSP_LOOPBACK);
-        println!("reboot system request sent to address: {}", CSP_LOOPBACK);
 
         // Send data packet (string) to server
 

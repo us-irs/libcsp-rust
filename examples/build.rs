@@ -8,6 +8,7 @@ fn main() {
     let manifest_path = PathBuf::from(&manifest_dir);
     let libcsp_path = "../lib/libcsp";
     let mut csp_builder = Builder::new(PathBuf::from(libcsp_path), PathBuf::from(&out_dir));
+    csp_builder.compiler_warnings = false;
     // We always re-generate the header file.
     generate_autoconf_header_file(manifest_path.clone(), &csp_builder.cfg)
         .expect("generating header file failed");

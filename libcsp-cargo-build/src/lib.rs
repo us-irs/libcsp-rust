@@ -115,6 +115,7 @@ pub struct Builder {
     libcsp_src_path_base: PathBuf,
     out_dir: PathBuf,
     pub cfg: Config,
+    pub compiler_warnings: bool,
     build: cc::Build,
 }
 
@@ -128,6 +129,7 @@ impl Builder {
             libcsp_src_path_base,
             out_dir,
             cfg: Default::default(),
+            compiler_warnings: true,
             build: Default::default(),
         }
     }
@@ -182,6 +184,7 @@ impl Builder {
         inc_path.push("include");
         self.build.include(inc_path);
         self.build.include(&self.libcsp_src_path_base);
+        self.build.cargo_warnings(self.compiler_warnings);
 
         self.build.compile("csp");
         Ok(())
