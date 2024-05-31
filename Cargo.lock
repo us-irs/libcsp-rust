@@ -37,6 +37,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libc"
+version = "0.2.155"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
+
+[[package]]
 name = "libcsp-cargo-build"
 version = "0.1.0"
 dependencies = [
@@ -48,6 +54,7 @@ name = "libcsp-rust"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "libc",
  "num_enum",
 ]
 

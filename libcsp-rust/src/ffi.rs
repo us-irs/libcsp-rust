@@ -26,11 +26,13 @@ pub struct csp_id_t {
     pub sport: u8,
 }
 
+/*
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct csp_conn_s {
     pub address: u8,
 }
+*/
 
 #[doc = " CSP Packet.\n\n This structure is constructed to fit with all interface and protocols to prevent the\n need to copy data (zero copy).\n\n .. note:: In most cases a CSP packet cannot be reused in case of send failure, because the\n \t\t\t lower layers may add additional data causing increased length (e.g. CRC32), convert\n \t\t\t the CSP id to different endian (e.g. I2C), etc.\n"]
 #[repr(C)]
@@ -156,6 +158,70 @@ pub type csp_socket_t = csp_socket_s;
 #[doc = " Forward declaration of connection structure"]
 pub type csp_conn_t = csp_conn_s;
 
+pub type atomic_int = u32;
+
+#[doc = " Connection states"]
+pub type csp_conn_state_t = ::core::ffi::c_uint;
+
+#[doc = " Connection types"]
+pub type csp_conn_type_t = ::core::ffi::c_uint;
+
+#[doc = " RDP Connection states"]
+pub type csp_rdp_state_t = ::core::ffi::c_uint;
+
+#[cfg(unix)]
+pub type csp_bin_sem_t = libc::sem_t;
+
+#[doc = " RDP Connection"]
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct csp_rdp_t {
+    #[doc = "< Connection state"]
+    pub state: csp_rdp_state_t,
+    #[doc = "< Tracks 'who' have closed the RDP connection"]
+    pub closed_by: u8,
+    #[doc = "< The sequence number of the next segment that is to be sent"]
+    pub snd_nxt: u16,
+    #[doc = "< The sequence number of the oldest unacknowledged segment"]
+    pub snd_una: u16,
+    #[doc = "< The initial send sequence number"]
+    pub snd_iss: u16,
+    #[doc = "< The sequence number of the last segment received correctly and in sequence"]
+    pub rcv_cur: u16,
+    #[doc = "< The initial receive sequence number"]
+    pub rcv_irs: u16,
+    #[doc = "< The last sequence number acknowledged by the receiver"]
+    pub rcv_lsa: u16,
+    pub window_size: u32,
+    pub conn_timeout: u32,
+    pub packet_timeout: u32,
+    pub delayed_acks: u32,
+    pub ack_timeout: u32,
+    pub ack_delay_count: u32,
+    pub ack_timestamp: u32,
+    pub tx_wait: csp_bin_sem_t,
+}
+
+#[doc = " @brief Connection struct"]
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct csp_conn_s {
+    pub type_: atomic_int,
+    pub state: atomic_int,
+    pub idin: csp_id_t,
+    pub idout: csp_id_t,
+    pub sport_outgoing: u8,
+    pub rx_queue: csp_queue_handle_t,
+    pub rx_queue_static: csp_static_queue_t,
+    pub rx_queue_static_data:
+        [core::ffi::c_char; CSP_CONN_RXQUEUE_LEN * core::mem::size_of::<*const csp_packet_s>()],
+    pub callback: ::core::option::Option<unsafe extern "C" fn(packet: *mut csp_packet_t)>,
+    pub dest_socket: *mut csp_socket_t,
+    pub timestamp: u32,
+    pub opts: u32,
+    pub rdp: csp_rdp_t,
+}
+
 extern "C" {
     #[doc = " Error counters"]
     pub static mut csp_dbg_buffer_out: u8;
@@ -216,7 +282,7 @@ extern "C" {
     ) -> *mut csp_conn_t;
 
     #[doc = " Return destination port of connection.\n\n @param[in] conn connection\n @return destination port of an incoming connection"]
-    pub fn csp_conn_dport(conn: *mut csp_conn_t) -> ::core::ffi::c_int;
+    pub fn csp_conn_dport(conn: *const csp_conn_t) -> ::core::ffi::c_int;
 
     #[doc = " Get free buffer from task context.\n\n @param[in] unused OBSOLETE ignored field, csp packets have a fixed size now\n @return Buffer pointer to #csp_packet_t or NULL if no buffers available"]
     pub fn csp_buffer_get(unused: usize) -> *mut csp_packet_t;
@@ -228,6 +294,152 @@ extern "C" {
     pub fn csp_conn_print_table();
 
     pub fn csp_iflist_print();
+
+}
+#[test]
+fn bindgen_test_layout_csp_conn_s() {
+    const UNINIT: ::core::mem::MaybeUninit<csp_conn_s> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<csp_conn_s>(),
+        280usize,
+        concat!("Size of: ", stringify!(csp_conn_s))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<csp_conn_s>(),
+        8usize,
+        concat!("Alignment of ", stringify!(csp_conn_s))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).type_) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(type_)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).state) as usize - ptr as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(state)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).idin) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(idin)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).idout) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(idout)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).sport_outgoing) as usize - ptr as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(sport_outgoing)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).rx_queue) as usize - ptr as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(rx_queue)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).rx_queue_static) as usize - ptr as usize },
+        40usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(rx_queue_static)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).rx_queue_static_data) as usize - ptr as usize },
+        48usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(rx_queue_static_data)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).callback) as usize - ptr as usize },
+        176usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(callback)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).dest_socket) as usize - ptr as usize },
+        184usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(dest_socket)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).timestamp) as usize - ptr as usize },
+        192usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(timestamp)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).opts) as usize - ptr as usize },
+        196usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(opts)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).rdp) as usize - ptr as usize },
+        200usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(csp_conn_s),
+            "::",
+            stringify!(rdp)
+        )
+    );
 }
 
 #[cfg(test)]
@@ -658,6 +870,41 @@ mod tests {
                 stringify!(csp_socket_s),
                 "::",
                 stringify!(opts)
+            )
+        );
+    }
+    #[test]
+    fn bindgen_test_layout_sem_t() {
+        const UNINIT: ::core::mem::MaybeUninit<sem_t> = ::core::mem::MaybeUninit::uninit();
+        let ptr = UNINIT.as_ptr();
+        assert_eq!(
+            ::core::mem::size_of::<sem_t>(),
+            32usize,
+            concat!("Size of: ", stringify!(sem_t))
+        );
+        assert_eq!(
+            ::core::mem::align_of::<sem_t>(),
+            8usize,
+            concat!("Alignment of ", stringify!(sem_t))
+        );
+        assert_eq!(
+            unsafe { ::core::ptr::addr_of!((*ptr).__size) as usize - ptr as usize },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(sem_t),
+                "::",
+                stringify!(__size)
+            )
+        );
+        assert_eq!(
+            unsafe { ::core::ptr::addr_of!((*ptr).__align) as usize - ptr as usize },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(sem_t),
+                "::",
+                stringify!(__align)
             )
         );
     }
