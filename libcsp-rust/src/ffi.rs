@@ -265,7 +265,7 @@ extern "C" {
         dst: u16,
         dst_port: u8,
         timeout: u32,
-        outbuf: *mut ::core::ffi::c_void,
+        outbuf: *const ::core::ffi::c_void,
         outlen: ::core::ffi::c_int,
         inbuf: *mut ::core::ffi::c_void,
         inlen: ::core::ffi::c_int,
@@ -290,7 +290,7 @@ extern "C" {
     pub fn csp_transaction_persistent(
         conn: *mut csp_conn_t,
         timeout: u32,
-        outbuf: *mut ::core::ffi::c_void,
+        outbuf: *const ::core::ffi::c_void,
         outlen: ::core::ffi::c_int,
         inbuf: *mut ::core::ffi::c_void,
         inlen: ::core::ffi::c_int,
@@ -897,41 +897,6 @@ mod tests {
                 stringify!(csp_socket_s),
                 "::",
                 stringify!(opts)
-            )
-        );
-    }
-    #[test]
-    fn bindgen_test_layout_sem_t() {
-        const UNINIT: ::core::mem::MaybeUninit<sem_t> = ::core::mem::MaybeUninit::uninit();
-        let ptr = UNINIT.as_ptr();
-        assert_eq!(
-            ::core::mem::size_of::<sem_t>(),
-            32usize,
-            concat!("Size of: ", stringify!(sem_t))
-        );
-        assert_eq!(
-            ::core::mem::align_of::<sem_t>(),
-            8usize,
-            concat!("Alignment of ", stringify!(sem_t))
-        );
-        assert_eq!(
-            unsafe { ::core::ptr::addr_of!((*ptr).__size) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sem_t),
-                "::",
-                stringify!(__size)
-            )
-        );
-        assert_eq!(
-            unsafe { ::core::ptr::addr_of!((*ptr).__align) as usize - ptr as usize },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sem_t),
-                "::",
-                stringify!(__align)
             )
         );
     }

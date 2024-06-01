@@ -9,10 +9,10 @@ use std::{
 };
 
 use libcsp_rust::{
-    csp_accept_guarded, csp_bind, csp_buffer_free, csp_buffer_get, csp_conn_dport,
-    csp_conn_print_table, csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping,
-    csp_read, csp_reboot, csp_route_work, csp_send, csp_service_handler, ConnectOpts, CspSocket,
-    MsgPriority, SocketFlags, CSP_ANY, CSP_LOOPBACK,
+    csp_accept_guarded, csp_bind, csp_buffer_get, csp_conn_dport, csp_conn_print_table,
+    csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping, csp_read,
+    csp_read_guarded, csp_reboot, csp_route_work, csp_send, csp_service_handler, ConnectOpts,
+    CspSocket, MsgPriority, SocketFlags, CSP_ANY, CSP_LOOPBACK,
 };
 
 const MY_SERVER_PORT: i32 = 10;
@@ -115,23 +115,22 @@ fn server(server_received: Arc<AtomicU32>, stop_signal: Arc<AtomicBool>) {
                 break;
             }
 
-            // SAFETY: Connection is active while we read here.
-            let packet = csp_read(&mut conn.0, Duration::from_millis(100));
+            // Guarded packet is cleaned up automatically.
+            let packet = csp_read_guarded(&mut conn.0, Duration::from_millis(100));
             if packet.is_none() {
                 break;
             }
-            let mut packet = packet.unwrap();
+            let packet = packet.unwrap();
             match csp_conn_dport(&conn.0) {
                 MY_SERVER_PORT => {
                     server_received.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let cstr = CStr::from_bytes_with_nul(packet.packet_data())
+                    let cstr = CStr::from_bytes_with_nul(packet.as_ref().packet_data())
                         .expect("invalid packet data format, is not C string");
                     // Process packet here.
                     println!("packet received on MY_SERVER_PORT: {:?}", cstr);
-                    csp_buffer_free(packet);
                 }
                 _ => {
-                    csp_service_handler(&mut packet);
+                    csp_service_handler(packet.take());
                 }
             };
         }

@@ -155,6 +155,29 @@ impl CspPacketRef {
     }
 }
 
+pub struct CspPacketRefGuard(Option<CspPacketRef>);
+
+impl Drop for CspPacketRefGuard {
+    fn drop(&mut self) {
+        if let Some(packet) = self.0.take() {
+            csp_buffer_free(packet)
+        }
+    }
+}
+
+impl CspPacketRefGuard {
+    /// Take the packet out of the guard, preventing it from being freed.
+    pub fn take(mut self) -> CspPacketRef {
+        self.0.take().unwrap()
+    }
+}
+
+impl AsRef<CspPacketRef> for CspPacketRefGuard {
+    fn as_ref(&self) -> &CspPacketRef {
+        self.0.as_ref().unwrap()
+    }
+}
+
 impl CspPacketMut {
     pub fn packet_data(&self) -> &[u8] {
         unsafe { &(*self.0).packet_data_union.data[..self.packet_length()] }
@@ -323,13 +346,19 @@ pub fn csp_read(conn: &mut CspConnRef, timeout: Duration) -> Option<CspPacketRef
     Some(CspPacketRef(unsafe { &mut *opt_packet }))
 }
 
+/// Rust wrapper for [ffi::csp_read] which returns a guarded packet reference. This packet
+/// will cleaned up automatically with [csp_buffer_free] on drop.
+pub fn csp_read_guarded(conn: &mut CspConnRef, timeout: Duration) -> Option<CspPacketRefGuard> {
+    Some(CspPacketRefGuard(Some(csp_read(conn, timeout)?)))
+}
+
 /// Rust wrapper for [ffi::csp_conn_dport].
 pub fn csp_conn_dport(conn: &CspConnRef) -> i32 {
     // SAFETY: FFI call.
     unsafe { ffi::csp_conn_dport(conn.0) }
 }
 
-pub fn csp_service_handler(packet: &mut CspPacketRef) {
+pub fn csp_service_handler(packet: CspPacketRef) {
     // SAFETY: FFI call.
     unsafe { ffi::csp_service_handler(&mut *packet.0) }
 }
@@ -446,8 +475,37 @@ pub fn csp_iflist_print() {
     unsafe { ffi::csp_iflist_print() }
 }
 
+/// Rust wrapper for [ffi::csp_buffer_free].
 pub fn csp_buffer_free(packet: impl Into<CspPacketRef>) {
     // SAFETY: FFI call and the Rust type system actually ensure the correct type
-    // is free'd here.
+    // is free'd here, while also taking the packet by value.
     unsafe { ffi::csp_buffer_free(packet.into().0 as *mut libc::c_void) }
+}
+
+/// Rust wrapper for [ffi::csp_transaction_persistent].
+///
+/// # Parameters
+///
+/// * `in_len`: Use [None] if the length is unknown, and the expected reply length otherwise.
+///
+/// # Returns
+///
+/// 1 or reply size on success, 0 otherwise.
+pub fn csp_transaction_persistent(
+    conn: &mut CspConnRef,
+    timeout: Duration,
+    out_data: &[u8],
+    in_data: &mut [u8],
+    in_len: Option<usize>,
+) -> i32 {
+    unsafe {
+        ffi::csp_transaction_persistent(
+            conn.0,
+            timeout.as_millis() as u32,
+            out_data.as_ptr() as *const core::ffi::c_void,
+            out_data.len() as i32,
+            in_data.as_ptr() as *mut core::ffi::c_void,
+            in_len.map(|v| v as i32).unwrap_or(-1),
+        )
+    }
 }
