@@ -1,31 +1,33 @@
 libcsp-rust
 =========
 
-This project aims to provide libraries and tools build and use
-[`libcsp`](https://github.com/libcsp/libcsp) in your Rust project.
+This project aims to provide libraries and tools to build and use
+the [`libcsp`](https://github.com/libcsp/libcsp) C library in your Rust project.
 
-It provides 2 crates for this:
+It provides 3 crates for this:
 
+- [`libcsp`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-rust)
+  provides a safe and ergonomic Rust interface on top of the `libcsp-sys` crate.
+- [`libcsp-sys`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-sys)
+  provides the Rust bindings to `libcsp`.
 - [`libcsp-cargo-build`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-cargo-build)
   provides an API to build the `libcsp` using `cargo` with the [`cc`](https://docs.rs/cc/latest/cc/) crate.
-- [`libcsp-rust`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-rust)
-  provides the Rust bindings to `libcsp` and a safe and ergonomic Rust interface.
 
-In addition, it provides a workspace to allow updating the `libcsp` and the corresponding bindings
-more easily inside the `lib` directory. Some of the examples `libcsp` provides were ported to Rust
-and are showcases in the `examples` directory.
+In addition, it provides a workspace to allow updating the `libcsp` C sources and the corresponding
+bindings more easily inside the `clib` directory. Some of the examples `libcsp` provides were ported
+to Rust and are showcased in the `examples` directory.
 
 ## How it works
 
 We assume that cargo should also take care of building the library.
 
 1. Add the `libcsp-cargo-build` as a build dependency inside your `Cargo.toml`.
-2. Add the `libcsp-rust` as a regular dependency inside your `Cargo.toml`.
-3. Create a custom `build.rs` script which takes care of building `libcsp` using the API
-   provided by `libcsp-cargo-build`. You have to provide the source code for `libcsp` inside some
-   directory and pass the directory path to a builder API.
-4. You can now write regular Rust code and use the API provided by `libcsp-rust` to use `libcsp`
-   in a safe and Rusty way.
+2. Add the `libcsp` as a regular dependency inside your `Cargo.toml`.
+3. Create a custom `build.rs` script which takes care of building the `libcsp` C library using the
+   API provided by `libcsp-cargo-build`. You have to provide the source code for `libcsp` inside
+   some directory and pass the directory path to the builder API.
+4. You can now write regular Rust code and use the Rust API provided by the `libcsp` crate to use
+   the `libcsp` C library.
 
 It is recommended to have a look at the [example build script](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/examples/build.rs)
 which should give you a general idea of how a build script might look like to integrate `libcsp`.
@@ -40,9 +42,9 @@ in Rust. You can run the example using the following steps:
    script or adding `libcsp` as a git submodule.
 2. You can now use `cargo run -p libcsp-rust-examples` to run the server/client example.
 
-## Compile-time configuration of the `libcsp-rust` library
+## Compile-time configuration of the `libcsp-sys` library
 
-The `libcsp-rust` library requires some compile-time configuration file to be included to work
+The `libcsp-sys` requires some compile-time configuration file to be included to work
 properly. You can see an example version of the file for the workspace
 [here](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/examples/autoconfig.rs).
 The user has to provide the path to a directory containing this `autoconfig.rs` file using the
@@ -60,10 +62,10 @@ configuration:
 CSP_CONFIG_DIR = { value = "examples", relative = true }
 ```
 
-## Generating and update the bindings using the `lib` folder
+## Generating and update the bindings using the `clib` folder
 
 The `lib` folder in this repository serves as the staging directory for the `libcsp` library to
-build. However, it can also be used to update the bindings provided in `libcsp-rust` by providing
+build. However, it can also be used to update the bindings provided in `libcsp-sys` by providing
 some tools and helpers to auto-generate and update the bindings file `bindings.rs`.
 
 If you want to do this, you should install `bindgen-cli` first:
@@ -74,7 +76,7 @@ cargo install bindgen-cli --locked
 
 `bindgen` needs some additional information provided by the user to generate the bindings:
 An `autoconfig.h` file which is used to configure `libcsp`. Normally, this file is generated
-by the C build system. This file is located at `cfg/csp` and is also updated automatically
+by the C build system. This file is located at `clib/cfg/csp` and is also updated automatically
 when running the example application.
 
 After cloning the repository, you can now run the following command to re-generate the bindings
@@ -85,4 +87,4 @@ bindgen --use-core wrapper.h -- "-I./libcsp/include" "-I./cfg" "-I./libcsp/src" 
 ```
 
 With the bindings file, you can now manually update the FFI bindings provided in
-`libcsp-rust/src/ffi.rs` or in your own CSP library.
+`libcsp-sys/src/lib.rs` or in your own CSP library.

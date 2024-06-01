@@ -1,12 +1,12 @@
-libcsp-rust
+libcsp-sys
 ========
 
-This crate provides a (mostly) safe and ergonomic Rust API for the
-[`libcsp` library](https://github.com/libcsp/libcsp) on top of the `libcsp-sys`
-crate. You can find some more high-level information and examples in the
-[main repository](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust).
+This crate provides FFI bindings for the [`libcsp` library](https://github.com/libcsp/libcsp).
 
-The API documentation should provide all additional information required to use this library.
+Generally, you probably do not want to use this library directly and instead use the
+`libcsp` Rust crate which provides a safe and ergonomic Rust API.
+You can find some more high-level information and examples in the
+[main repository](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust).
 
 ## Compile-time configuration of the `libcsp-rust` library
 
