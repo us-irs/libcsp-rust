@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 # [unreleased]
 
+# [v0.1.1] 2024-06-01
+
+Possible bugfix with dependency resolver not being able to select the correct `-sys` crate.
+
 # [v0.1.0] 2024-06-01
 
 Initial release

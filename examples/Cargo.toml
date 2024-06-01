@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-libcsp =  { path = "../libcsp" }
+libcsp = "0.1"
 
 [build-dependencies]
-libcsp-cargo-build = { path = "../libcsp-cargo-build" }
+libcsp-cargo-build = "0.1"
