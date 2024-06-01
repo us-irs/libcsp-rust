@@ -15,3 +15,4 @@ categories = ["aerospace", "external-ffi-bindings", "no-std", "hardware-support"
 bitflags = "2"
 num_enum = "0.7"
 libc = "0.2"
+libcsp-sys = { path = "../libcsp-sys" }
