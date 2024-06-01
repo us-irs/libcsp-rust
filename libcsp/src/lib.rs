@@ -350,6 +350,21 @@ pub fn csp_read_guarded(conn: &mut CspConnRef, timeout: Duration) -> Option<CspP
     Some(CspPacketRefGuard(Some(csp_read(conn, timeout)?)))
 }
 
+/// Rust wrapper for [ffi::csp_recvfrom].
+pub fn csp_recvfrom(socket: &mut CspSocket, timeout: u32) -> Option<CspPacketRef> {
+    let opt_packet = unsafe { ffi::csp_recvfrom(&mut socket.0, timeout) };
+    if opt_packet.is_null() {
+        return None;
+    }
+    Some(CspPacketRef(unsafe { &mut *opt_packet }))
+}
+
+/// Rust wrapper for [ffi::csp_recvfrom] which returns a guarded packet reference. This packet
+/// will cleaned up automatically with [csp_buffer_free] on drop.
+pub fn csp_recvfrom_guarded(socket: &mut CspSocket, timeout: u32) -> Option<CspPacketRefGuard> {
+    Some(CspPacketRefGuard(Some(csp_recvfrom(socket, timeout)?)))
+}
+
 /// Rust wrapper for [ffi::csp_conn_dport].
 pub fn csp_conn_dport(conn: &CspConnRef) -> i32 {
     // SAFETY: FFI call.
@@ -504,6 +519,41 @@ pub fn csp_transaction_persistent(
             out_data.len() as i32,
             in_data.as_ptr() as *mut core::ffi::c_void,
             in_len.map(|v| v as i32).unwrap_or(-1),
+        )
+    }
+}
+
+/// Rust wrapper for [ffi::csp_transaction_w_opts].
+///
+/// # Parameters
+///
+/// * `in_len`: Use [None] if the length is unknown, and the expected reply length otherwise.
+///
+/// # Returns
+///
+/// 1 or reply size on success, 0 otherwise.
+#[allow(clippy::too_many_arguments)]
+pub fn csp_transaction_w_opts(
+    prio: MsgPriority,
+    dst: u16,
+    dst_port: u8,
+    timeout: Duration,
+    out_data: &[u8],
+    in_data: &mut [u8],
+    in_len: Option<usize>,
+    opts: ConnectOpts,
+) -> i32 {
+    unsafe {
+        ffi::csp_transaction_w_opts(
+            prio as u8,
+            dst,
+            dst_port,
+            timeout.as_millis() as u32,
+            out_data.as_ptr() as *const core::ffi::c_void,
+            out_data.len() as i32,
+            in_data.as_ptr() as *mut core::ffi::c_void,
+            in_len.map(|v| v as i32).unwrap_or(-1),
+            opts.bits(),
         )
     }
 }

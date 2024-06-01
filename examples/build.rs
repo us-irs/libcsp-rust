@@ -6,8 +6,8 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap_or_default();
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
     let manifest_path = PathBuf::from(&manifest_dir);
-    let lib_cfg_dir = "../lib/cfg/csp";
-    let libcsp_path = "../lib/libcsp";
+    let lib_cfg_dir = "../clib/cfg/csp";
+    let libcsp_path = "../clib/libcsp";
 
     // This helper structure will take care of the majority of work to compile libcsp using the
     // cc crate.
