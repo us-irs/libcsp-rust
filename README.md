@@ -59,8 +59,8 @@ The user has to provide the path to a directory containing this `autoconfig.rs` 
 `CSP_CONFIG_DIR` environmental variable.
 
 You can automatically generate this file when using `libcsp-cargo-build` by using the
-[`generate_autoconf_rust_file`](here be link soon) method of the Builder object as done in the
-example build script.
+[`generate_autoconf_rust_file`](https://docs.rs/libcsp-cargo-build/latest/libcsp_cargo_build/fn.generate_autoconf_rust_file.html)
+method of the Builder object as done in the example build script.
 
 In this workspace, the `CSP_CONFIG_DIR` variable is hardcoded using the following `.cargo/config.toml`
 configuration:
