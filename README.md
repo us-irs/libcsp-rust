@@ -6,7 +6,7 @@ the [`libcsp`](https://github.com/libcsp/libcsp) C library in your Rust project.
 
 It provides 3 crates for this:
 
-- [`libcsp`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-rust)
+- [`libcsp`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main)
   provides a safe and ergonomic Rust interface on top of the `libcsp-sys` crate.
 - [`libcsp-sys`](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/libcsp-sys)
   provides the Rust bindings to [`libcsp`](https://github.com/libcsp/libcsp).
