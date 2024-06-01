@@ -398,6 +398,21 @@ pub fn csp_accept(socket: &mut CspSocket, timeout: Duration) -> Option<CspConnRe
     }))
 }
 
+/// Rust wrapper for [ffi::csp_socket_close] which returns the result code directly.
+pub fn csp_socket_close_raw(sock: &mut CspSocket) -> i32 {
+    unsafe { ffi::csp_socket_close(&mut sock.0) }
+}
+
+/// Rust wrapper for [ffi::csp_socket_close].
+///
+/// This function will panic if the error code returned from [ffi::csp_socket_close] is not one of
+/// [CspError]. [csp_socket_close_raw] can be used if this is not acceptable.
+pub fn csp_socket_close(sock: &mut CspSocket) -> Result<(), CspError> {
+    let result = unsafe { ffi::csp_socket_close(&mut sock.0) };
+    Err(CspError::try_from(result)
+        .unwrap_or_else(|_| panic!("unexpected error value {} from csp_socket_close", result)))
+}
+
 /// Rust wrapper for [ffi::csp_read].
 pub fn csp_read(conn: &mut CspConnRef, timeout: Duration) -> Option<CspPacketRef> {
     let timeout_millis = timeout.as_millis();

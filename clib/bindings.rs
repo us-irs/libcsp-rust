@@ -343,9 +343,9 @@ pub const CSP_DBG_ETH_ERR_RX_OUT: u32 = 3;
 pub const CSP_DBG_ETH_ERR_SHORT_BEGIN: u32 = 4;
 pub const CSP_DBG_ETH_ERR_INCOMPLETE: u32 = 5;
 pub const CSP_DBG_ETH_ERR_UNKNOWN: u32 = 6;
+pub const __bool_true_false_are_defined: u32 = 1;
 pub const true_: u32 = 1;
 pub const false_: u32 = 0;
-pub const __bool_true_false_are_defined: u32 = 1;
 pub const CSP_QUEUE_OK: u32 = 0;
 pub const CSP_QUEUE_ERROR: i32 = -1;
 pub const CSP_ANY: u32 = 255;
@@ -2411,7 +2411,11 @@ extern "C" {
     ) -> ::core::ffi::c_int;
 }
 extern "C" {
-    pub fn bcopy(__src: *const ::core::ffi::c_void, __dest: *mut ::core::ffi::c_void, __n: usize);
+    pub fn bcopy(
+        __src: *const ::core::ffi::c_void,
+        __dest: *mut ::core::ffi::c_void,
+        __n: ::core::ffi::c_ulong,
+    );
 }
 extern "C" {
     pub fn bzero(__s: *mut ::core::ffi::c_void, __n: ::core::ffi::c_ulong);
