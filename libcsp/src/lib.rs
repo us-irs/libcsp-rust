@@ -14,6 +14,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use bitflags::bitflags;
 use ffi::{csp_conn_s, csp_packet_s, csp_socket_s};
+use libcsp_sys as ffi;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ReservedPort {

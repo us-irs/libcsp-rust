@@ -43,14 +43,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
-name = "libcsp-cargo-build"
-version = "0.1.0"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "libcsp-rust"
+name = "libcsp"
 version = "0.1.0"
 dependencies = [
  "bitflags",
@@ -59,11 +52,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcsp-cargo-build"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "libcsp-rust-examples"
 version = "0.1.0"
 dependencies = [
+ "libcsp",
  "libcsp-cargo-build",
- "libcsp-rust",
+]
+
+[[package]]
+name = "libcsp-sys"
+version = "0.1.0"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 [package]
-name = "libcsp-rust"
+name = "libcsp-sys"
 version = "0.1.0"
 edition = "2021"
 authors = ["Robin Mueller <muellerr@irs.uni-stuttgart.de>"]
-description = "FFI bindings and a safe and ergonomic Rust API for libcsp"
+description = "FFI bindings for libcsp"
 homepage = "https://egit.irs.uni-stuttgart.de/rust/libcsp-rust"
 repository = "https://egit.irs.uni-stuttgart.de/rust/libcsp-rust"
 license = "Apache-2.0"
@@ -13,6 +13,4 @@ categories = ["aerospace", "external-ffi-bindings", "no-std", "hardware-support"
 links = "csp"
 
 [dependencies]
-bitflags = "2"
-num_enum = "0.7"
 libc = "0.2"
