@@ -133,9 +133,11 @@ pub struct Builder {
     build: cc::Build,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum BuildCreationError {
+    #[error("The specified libcsp path does not exist")]
     PathDoesNotExist,
+    #[error("The specified libcsp path does not have the expected format of the library")]
     InvalidLibcspFormat,
 }
 

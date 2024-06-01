@@ -12,3 +12,4 @@ categories = ["aerospace", "external-ffi-bindings", "no-std", "hardware-support"
 
 [dependencies]
 cc = "1"
+thiserror = "1"
