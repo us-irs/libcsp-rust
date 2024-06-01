@@ -1,3 +1,6 @@
+[![Crates.io](https://img.shields.io/crates/v/libcsp)](https://crates.io/crates/libcsp)
+[![docs.rs](https://img.shields.io/docsrs/libcsp)](https://docs.rs/libcsp)
+
 libcsp-rust
 =========
 

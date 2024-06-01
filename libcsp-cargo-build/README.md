@@ -1,3 +1,6 @@
+[![Crates.io](https://img.shields.io/crates/v/libcsp-cargo-build)](https://crates.io/crates/libcsp-cargo-build)
+[![docs.rs](https://img.shields.io/docsrs/libcsp-cargo-build)](https://docs.rs/libcsp-cargo-build)
+
 libcsp-cargo-build
 ========
 

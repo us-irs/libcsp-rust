@@ -1,3 +1,6 @@
+[![Crates.io](https://img.shields.io/crates/v/libcsp-sys)](https://crates.io/crates/libcsp-sys)
+[![docs.rs](https://img.shields.io/docsrs/libcsp-sys)](https://docs.rs/libcsp-sys)
+
 libcsp-sys
 ========
 
