@@ -19,3 +19,17 @@ The user has to provide the path to a directory containing this `autoconfig.rs` 
 It is recommended to read the [main workspace README](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust)
 for more information to make the generation and specification of this auto-configuration file
 as conveniently and easy as possible.
+
+## Run unittests
+
+Running unittests required the `RUN_TESTS` environmental variable to be set to 1. This is because
+the actual `libcsp` library might be built and linked in a separate crate, so the linker is not
+able to process `-l csp` when running the tests.
+
+You can use
+
+```sh
+RUN_TESTS=1 cargo test
+```
+
+to run the unittests.

@@ -14,6 +14,8 @@
 //! [here](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust/src/branch/main/examples/autoconfig.rs).
 //! The user has to provide the path to a directory containing this `autoconfig.rs` file using the
 //! `CSP_CONFIG_DIR` environmental variable.
+#![no_std]
+#![cfg_attr(docs_rs, feature(doc_auto_cfg))]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -549,8 +551,7 @@ pub mod hooks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::mem::{align_of, size_of};
-    use std::mem::MaybeUninit;
+    use core::mem::{align_of, size_of, MaybeUninit};
 
     #[test]
     fn bindgen_test_layout_csp_timestamp_t() {
@@ -562,12 +563,12 @@ mod tests {
             concat!("Size of: ", stringify!(csp_timestamp_t))
         );
         assert_eq!(
-            std::mem::align_of::<csp_timestamp_t>(),
+            core::mem::align_of::<csp_timestamp_t>(),
             4usize,
             concat!("Alignment of ", stringify!(csp_timestamp_t))
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).tv_sec) as usize - ptr as usize },
+            unsafe { ::core::ptr::addr_of!((*ptr).tv_sec) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -577,7 +578,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).tv_nsec) as usize - ptr as usize },
+            unsafe { ::core::ptr::addr_of!((*ptr).tv_nsec) as usize - ptr as usize },
             4usize,
             concat!(
                 "Offset of field: ",
@@ -603,7 +604,7 @@ mod tests {
             concat!("Alignment of ", stringify!(__packed))
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).pri) as usize - ptr as usize },
+            unsafe { ::core::ptr::addr_of!((*ptr).pri) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -613,7 +614,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).flags) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).flags) as usize - ptr as usize },
             1usize,
             concat!(
                 "Offset of field: ",
@@ -623,7 +624,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).src) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).src) as usize - ptr as usize },
             2usize,
             concat!(
                 "Offset of field: ",
@@ -633,7 +634,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).dst) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).dst) as usize - ptr as usize },
             4usize,
             concat!(
                 "Offset of field: ",
@@ -643,7 +644,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).dport) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).dport) as usize - ptr as usize },
             6usize,
             concat!(
                 "Offset of field: ",
@@ -653,7 +654,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).sport) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).sport) as usize - ptr as usize },
             7usize,
             concat!(
                 "Offset of field: ",
@@ -685,7 +686,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rdp_quarantine) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).rdp_quarantine) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -695,7 +696,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).timestamp_tx) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).timestamp_tx) as usize - ptr as usize },
             4usize,
             concat!(
                 "Offset of field: ",
@@ -705,7 +706,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).timestamp_rx) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).timestamp_rx) as usize - ptr as usize },
             8usize,
             concat!(
                 "Offset of field: ",
@@ -715,7 +716,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).conn) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).conn) as usize - ptr as usize },
             16usize,
             concat!(
                 "Offset of field: ",
@@ -747,7 +748,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rx_count) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).rx_count) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -757,7 +758,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).remain) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).remain) as usize - ptr as usize },
             2usize,
             concat!(
                 "Offset of field: ",
@@ -767,7 +768,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).cfpid) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).cfpid) as usize - ptr as usize },
             4usize,
             concat!(
                 "Offset of field: ",
@@ -777,7 +778,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).last_used) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).last_used) as usize - ptr as usize },
             8usize,
             concat!(
                 "Offset of field: ",
@@ -787,7 +788,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).frame_begin) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).frame_begin) as usize - ptr as usize },
             16usize,
             concat!(
                 "Offset of field: ",
@@ -797,7 +798,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).frame_length) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).frame_length) as usize - ptr as usize },
             24usize,
             concat!(
                 "Offset of field: ",
@@ -836,7 +837,7 @@ mod tests {
             concat!("Alignment of ", stringify!(csp_packet_s__bindgen_ty_2))
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).data) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -846,7 +847,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data16) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).data16) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -856,7 +857,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).data32) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).data32) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -881,7 +882,7 @@ mod tests {
             concat!("Alignment of ", stringify!(csp_packet_s))
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).length) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).length) as usize - ptr as usize },
             32usize,
             concat!(
                 "Offset of field: ",
@@ -891,7 +892,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).id) as usize - ptr as usize },
             34usize,
             concat!(
                 "Offset of field: ",
@@ -901,7 +902,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).next) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).next) as usize - ptr as usize },
             48usize,
             concat!(
                 "Offset of field: ",
@@ -911,7 +912,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).header) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).header) as usize - ptr as usize },
             56usize,
             concat!(
                 "Offset of field: ",
@@ -924,20 +925,20 @@ mod tests {
 
     #[test]
     fn bindgen_test_layout_csp_socket_s() {
-        const UNINIT: ::std::mem::MaybeUninit<csp_socket_s> = ::std::mem::MaybeUninit::uninit();
+        const UNINIT: core::mem::MaybeUninit<csp_socket_s> = core::mem::MaybeUninit::uninit();
         let ptr = UNINIT.as_ptr();
         assert_eq!(
-            ::std::mem::size_of::<csp_socket_s>(),
+            core::mem::size_of::<csp_socket_s>(),
             152usize,
             concat!("Size of: ", stringify!(csp_socket_s))
         );
         assert_eq!(
-            ::std::mem::align_of::<csp_socket_s>(),
+            core::mem::align_of::<csp_socket_s>(),
             8usize,
             concat!("Alignment of ", stringify!(csp_socket_s))
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rx_queue) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).rx_queue) as usize - ptr as usize },
             0usize,
             concat!(
                 "Offset of field: ",
@@ -947,7 +948,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rx_queue_static) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).rx_queue_static) as usize - ptr as usize },
             8usize,
             concat!(
                 "Offset of field: ",
@@ -957,7 +958,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).rx_queue_static_data) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).rx_queue_static_data) as usize - ptr as usize },
             16usize,
             concat!(
                 "Offset of field: ",
@@ -967,7 +968,7 @@ mod tests {
             )
         );
         assert_eq!(
-            unsafe { ::std::ptr::addr_of!((*ptr).opts) as usize - ptr as usize },
+            unsafe { core::ptr::addr_of!((*ptr).opts) as usize - ptr as usize },
             144usize,
             concat!(
                 "Offset of field: ",
