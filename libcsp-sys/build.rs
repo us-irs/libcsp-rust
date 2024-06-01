@@ -15,19 +15,24 @@ fn main() {
         println!("cargo:rustc-link-lib=csp");
     }
 
-    let out_path = env::var("OUT_DIR").unwrap();
-    let csp_conf_dir = match env::var(ENV_KEY_CSP_CONFIG_DIR) {
-        Ok(conf_path) => conf_path,
-        Err(_e) => {
-            println!(
+    let mut csp_conf_path = if std::env::var("DOCS_RS").is_ok() {
+        PathBuf::from("./templates")
+    } else {
+        match env::var(ENV_KEY_CSP_CONFIG_DIR) {
+            Ok(conf_path) => conf_path.into(),
+            Err(_e) => {
+                println!(
                 "cargo:warning={} not set, using CARGO_MANIFEST_DIR to search for autoconfig.rs",
                 ENV_KEY_CSP_CONFIG_DIR
             );
-            env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set")
+                env::var("CARGO_MANIFEST_DIR")
+                    .expect("CARGO_MANIFEST_DIR not set")
+                    .into()
+            }
         }
     };
-    let mut csp_conf_path = PathBuf::new();
-    csp_conf_path.push(csp_conf_dir);
+
+    let out_path = env::var("OUT_DIR").unwrap();
     csp_conf_path.push("autoconfig.rs");
     if !csp_conf_path.exists() {
         panic!(
