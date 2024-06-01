@@ -11,7 +11,8 @@ fn main() {
 
     // This helper structure will take care of the majority of work to compile libcsp using the
     // cc crate.
-    let mut csp_builder = Builder::new(PathBuf::from(libcsp_path), PathBuf::from(&out_dir));
+    let mut csp_builder = Builder::new(PathBuf::from(libcsp_path), PathBuf::from(&out_dir))
+        .expect("creating libcsp builder failed");
     // A lot of spam we are not interested in usually.
     csp_builder.compiler_warnings = false;
 

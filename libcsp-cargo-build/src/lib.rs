@@ -133,12 +133,32 @@ pub struct Builder {
     build: cc::Build,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BuildCreationError {
+    PathDoesNotExist,
+    InvalidLibcspFormat,
+}
+
 impl Builder {
-    /// Create a new builder instance.
-    pub fn new(libcsp_path: PathBuf, out_dir: PathBuf) -> Self {
+    /// Create a new builder instance. Returns [BuildCreationError] if the specified libcsp path
+    /// does not exist or does not have the expected format.
+    pub fn new(libcsp_path: PathBuf, out_dir: PathBuf) -> Result<Self, BuildCreationError> {
+        // Basic sanity checks for the passed libcsp path.
+        if !libcsp_path.exists() {
+            return Err(BuildCreationError::PathDoesNotExist);
+        }
+        if !libcsp_path
+            .join("include")
+            .join("csp")
+            .join("csp.h")
+            .exists()
+        {
+            return Err(BuildCreationError::InvalidLibcspFormat);
+        }
+
         let mut libcsp_src_path_base = libcsp_path.clone();
         libcsp_src_path_base.push("src");
-        Self {
+        Ok(Self {
             generate_autoconf_file: true,
             libcsp_path,
             libcsp_src_path_base,
@@ -146,7 +166,7 @@ impl Builder {
             cfg: Default::default(),
             compiler_warnings: true,
             build: Default::default(),
-        }
+        })
     }
 
     /// Access to the underlying [cc::Build] builder object.
