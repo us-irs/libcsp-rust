@@ -10,9 +10,9 @@ use std::{
 
 use libcsp::{
     csp_accept_guarded, csp_bind, csp_buffer_get, csp_conn_dport, csp_conn_print_table,
-    csp_connect_guarded, csp_iflist_print, csp_init, csp_listen, csp_ping, csp_read_guarded,
-    csp_reboot, csp_route_work, csp_send, csp_service_handler, ConnectOpts, CspError, CspSocket,
-    MsgPriority, SocketFlags, CSP_ANY, CSP_LOOPBACK,
+    csp_connect_guarded, csp_init, csp_listen, csp_ping, csp_read_guarded, csp_reboot,
+    csp_route_work, csp_send, csp_service_handler, iflist::csp_iflist_print, ConnectOpts, CspError,
+    CspSocket, MsgPriority, SocketFlags, CSP_ANY, CSP_LOOPBACK,
 };
 
 const MY_SERVER_PORT: i32 = 10;

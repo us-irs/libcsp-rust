@@ -1,5 +1,10 @@
+//! This crate provides a (mostly) safe and ergonomic Rust API for the
+//! [`libcsp` C library](https://github.com/libcsp/libcsp) on top of the
+//! [`libcsp-sys`](https://crates.io/crates/libcsp-sys) crate.
+//!
+//! You can find some more high-level information and examples in the
+//! [main repository](https://egit.irs.uni-stuttgart.de/rust/libcsp-rust).
 #![no_std]
-
 #[cfg(feature = "alloc")]
 extern crate alloc;
 #[cfg(any(feature = "std", test))]
@@ -11,7 +16,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use bitflags::bitflags;
 use ffi::{csp_conn_s, csp_packet_s, csp_socket_s};
-use libcsp_sys as ffi;
+pub use libcsp_sys as ffi;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ReservedPort {
@@ -291,6 +296,18 @@ pub fn csp_route_work() -> Result<(), CspError> {
 #[derive(Debug, Copy, Clone)]
 pub struct CspConnRef(*mut csp_conn_s);
 
+impl CspConnRef {
+    pub fn inner(&mut self) -> Option<&csp_conn_s> {
+        // SAFETY: Raw pointer access, we return [None] if the pointers is NULL.
+        unsafe { self.0.as_ref() }
+    }
+
+    pub fn inner_mut(&mut self) -> Option<&mut csp_conn_s> {
+        // SAFETY: Raw pointer access, we return [None] if the pointers is NULL.
+        unsafe { self.0.as_mut() }
+    }
+}
+
 pub struct CspConnGuard(pub CspConnRef);
 
 impl Drop for CspConnGuard {
@@ -308,6 +325,57 @@ impl AsRef<CspConnRef> for CspConnGuard {
 impl AsMut<CspConnRef> for CspConnGuard {
     fn as_mut(&mut self) -> &mut CspConnRef {
         &mut self.0
+    }
+}
+
+#[derive(Default)]
+pub struct CspInterface(pub ffi::csp_iface_t);
+
+impl CspInterface {
+    pub fn new(host_addr: u16, is_default: bool) -> Self {
+        Self(ffi::csp_iface_t {
+            addr: host_addr,
+            netmask: Default::default(),
+            name: core::ptr::null(),
+            interface_data: core::ptr::null_mut(),
+            driver_data: core::ptr::null_mut(),
+            nexthop: None,
+            is_default: is_default as u8,
+            tx: Default::default(),
+            rx: Default::default(),
+            tx_error: Default::default(),
+            rx_error: Default::default(),
+            drop: Default::default(),
+            autherr: Default::default(),
+            frame: Default::default(),
+            txbytes: Default::default(),
+            rxbytes: Default::default(),
+            irq: Default::default(),
+            next: core::ptr::null_mut(),
+        })
+    }
+}
+
+#[derive(Default)]
+pub struct CspUdpConf(pub ffi::csp_if_udp_conf_t);
+
+impl CspUdpConf {
+    pub fn new(addr: &'static str, lport: u16, rport: u16) -> Self {
+        Self(ffi::csp_if_udp_conf_t {
+            host: addr.as_ptr() as *mut i8,
+            lport: lport.into(),
+            rport: rport.into(),
+            server_handle: Default::default(),
+            peer_addr: libc::sockaddr_in {
+                sin_family: Default::default(),
+                sin_port: Default::default(),
+                sin_addr: libc::in_addr {
+                    s_addr: Default::default(),
+                },
+                sin_zero: Default::default(),
+            },
+            sockfd: Default::default(),
+        })
     }
 }
 
@@ -369,6 +437,41 @@ pub fn csp_recvfrom_guarded(socket: &mut CspSocket, timeout: u32) -> Option<CspP
 pub fn csp_conn_dport(conn: &CspConnRef) -> i32 {
     // SAFETY: FFI call.
     unsafe { ffi::csp_conn_dport(conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_sport].
+pub fn csp_conn_sport(conn: &CspConnRef) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_conn_sport(conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_dst].
+pub fn csp_conn_dst(conn: &CspConnRef) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_conn_dst(conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_src].
+pub fn csp_conn_src(conn: &CspConnRef) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_conn_src(conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_src].
+pub fn csp_conn_flags(conn: &CspConnRef) -> i32 {
+    // SAFETY: FFI call.
+    unsafe { ffi::csp_conn_flags(conn.0) }
+}
+
+/// Rust wrapper for [ffi::csp_conn_src] which also tries to convert the options to
+/// a [ConnectOpts] bitfield.
+pub fn csp_conn_flags_typed(conn: &CspConnRef) -> Option<ConnectOpts> {
+    let flags_raw = csp_conn_flags(conn);
+    if flags_raw < 0 {
+        return None;
+    }
+    // SAFETY: FFI call.
+    ConnectOpts::from_bits(flags_raw as u32)
 }
 
 pub fn csp_service_handler(packet: CspPacketRef) {
@@ -482,12 +585,6 @@ pub fn csp_conn_print_table() {
     unsafe { ffi::csp_conn_print_table() }
 }
 
-/// Rust wrapper for [ffi::csp_iflist_print].
-pub fn csp_iflist_print() {
-    // SAFETY: FFI call.
-    unsafe { ffi::csp_iflist_print() }
-}
-
 /// Rust wrapper for [ffi::csp_buffer_free].
 pub fn csp_buffer_free(packet: impl Into<CspPacketRef>) {
     // SAFETY: FFI call and the Rust type system actually ensure the correct type
@@ -555,5 +652,51 @@ pub fn csp_transaction_w_opts(
             in_len.map(|v| v as i32).unwrap_or(-1),
             opts.bits(),
         )
+    }
+}
+
+/// Calls [csp_transaction_w_opts] with [ConnectOpts::NONE].
+pub fn csp_transaction(
+    prio: MsgPriority,
+    dst: u16,
+    dst_port: u8,
+    timeout: Duration,
+    out_data: &[u8],
+    in_data: &mut [u8],
+    in_len: Option<usize>,
+) -> i32 {
+    csp_transaction_w_opts(
+        prio,
+        dst,
+        dst_port,
+        timeout,
+        out_data,
+        in_data,
+        in_len,
+        ConnectOpts::NONE,
+    )
+}
+
+pub mod udp {
+    use super::*;
+
+    /// Rust wrapper for [ffi::udp::csp_if_udp_init].
+    pub fn csp_if_udp_init(iface: &mut CspInterface, ifconf: &mut CspUdpConf) {
+        unsafe { ffi::udp::csp_if_udp_init(&mut iface.0, &mut ifconf.0) }
+    }
+}
+
+pub mod iflist {
+    use super::*;
+
+    /// Rust wrapper for [ffi::iflist::csp_iflist_print].
+    pub fn csp_iflist_print() {
+        // SAFETY: FFI call.
+        unsafe { ffi::iflist::csp_iflist_print() }
+    }
+
+    /// Rust wrapper for [ffi::iflist::csp_iflist_add].
+    pub fn csp_iflist_add(iface: &mut CspInterface) -> i32 {
+        unsafe { ffi::iflist::csp_iflist_add(&mut iface.0) }
     }
 }
