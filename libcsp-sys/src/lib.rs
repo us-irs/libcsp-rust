@@ -483,7 +483,7 @@ extern "C" {
     pub fn csp_buffer_get(unused: usize) -> *mut csp_packet_t;
 
     #[doc = " Free buffer (from task context).\n\n @param[in] buffer buffer to free. NULL is handled gracefully."]
-    pub fn csp_buffer_free(buffer: *mut ::core::ffi::c_void);
+    pub fn csp_buffer_free(buffer: *const ::core::ffi::c_void);
 
     #[doc = " Print connection table to stdout."]
     pub fn csp_conn_print_table();

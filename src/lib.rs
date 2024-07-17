@@ -604,7 +604,7 @@ pub fn csp_conn_print_table() {
 pub fn csp_buffer_free(packet: impl Into<CspPacketRef>) {
     // SAFETY: FFI call and the Rust type system actually ensure the correct type
     // is free'd here, while also taking the packet by value.
-    unsafe { ffi::csp_buffer_free(packet.into().0 as *mut libc::c_void) }
+    unsafe { ffi::csp_buffer_free(packet.into().0 as *const libc::c_void) }
 }
 
 /// Rust wrapper for [ffi::csp_transaction_persistent].
