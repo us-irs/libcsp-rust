@@ -48,7 +48,7 @@ in Rust. You can run the example using the following steps:
 
 1. Clone/Copy `libcsp` into the `lib` folder, for example by using the provided `lib/clone-csp.sh`
    script or adding `libcsp` as a git submodule.
-2. You can now use `cargo run -p libcsp-rust-examples` to run the server/client example.
+2. You can now use `cargo run` to run the server/client example.
 
 ## Compile-time configuration of the `libcsp-sys` library
 

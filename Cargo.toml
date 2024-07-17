@@ -3,6 +3,7 @@ members = [
     "libcsp-cargo-build",
     "examples"
 ]
+default-members = ["examples"]
 resolver = "2"
 
 [package]
